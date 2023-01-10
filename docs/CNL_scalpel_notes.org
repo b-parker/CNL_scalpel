@@ -1,0 +1,38 @@
+* Notes by day
+** 1-10-23
+- Loaded pycortex and set up github repo
+- Currently stuck on importing subject to pycortex db
+* Issues 
+BUG readout:
+ileNotFoundError                         Traceback (most recent call last)
+File ~/miniconda3/envs/CNL_scalpel/lib/python3.11/site-packages/nibabel/loadsave.py:87, in load(filename, **kwargs)
+     86 try:
+---> 87     stat_result = os.stat(filename)
+     88 except OSError:
+
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/benparker/miniconda3/envs/CNL_scalpel/share/pycortex/db/100307/anatomicals/raw_wm.nii.gz'
+
+During handling of the above exception, another exception occurred:
+
+FileNotFoundError                         Traceback (most recent call last)
+Cell In[8], line 12
+      9 annot_verts, annot_ctab, annot_names = read_annot(subjects_dir / '100307/label/rh.aparc.a2009s.annot')
+     11 # import test subject to pycortex db
+---> 12 cortex.freesurfer.import_subj('100307', freesurfer_subject_dir=subjects_dir_str)
+
+File ~/miniconda3/envs/CNL_scalpel/lib/python3.11/site-packages/cortex/freesurfer.py:197, in import_subj(fs_subject, cx_subject, freesurfer_subject_dir, whitematter_surf)
+    193 make_fiducial(fs_subject, freesurfer_subject_dir=freesurfer_subject_dir)
+    195 # Freesurfer uses FOV/2 for center, let's set the surfaces to use the
+    196 # magnet isocenter
+--> 197 trans = nibabel.load(out).get_affine()[:3, -1]
+    198 surfmove = trans - np.sign(trans) * [128, 128, 128]
+    200 from . import formats
+...
+---> 89     raise FileNotFoundError(f"No such file or no access: '{filename}'")
+     90 if stat_result.st_size <= 0:
+     91     raise ImageFileError(f"Empty file: '{filename}'")
+
+FileNotFoundError: No such file or no access: '/Users/benparker/miniconda3/envs/CNL_scalpel/share/pycortex/db/100307/anatomicals/raw_wm.nii.gz'
+
+* TODO
+Potentially older version of freesurfer required
