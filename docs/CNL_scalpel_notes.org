@@ -37,6 +37,21 @@ Still empty! /Users/benparker/miniconda3/envs/CNL_scalpel/share/pycortex/db/1003
 Not sure if this needs to have files in it, but likely should after running import_subj
 Raises question of whether the command is runnning correctly in terminal as well
 
+** 1-20-23
+
+Left pycortex import, not sure issue not worth it now
+
+New strategy is using nibabel functions to pull boundary vertices from existing labels. Then use these labels as boundary lines, 
+and take all vertices in brain with values between these.
+
+Created inferior boundary function. 
+     - TODO outliers within function
+          - Currently function works by binning all vertices along a given axis -- in this case anterior -- and then getting vertex with minimum S values   
+          in the bin. Issue is occasionally the lowest s value for a given bin is far from the true boundary.
+          - possible solution: remove all vertices more than 3 sds from boundary
+     - TODO use function to capture all vertices above the boundary sulcus
+     - TODO Visualize interactively
+
 
 * Issues 
 
