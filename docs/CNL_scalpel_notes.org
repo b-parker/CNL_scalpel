@@ -58,4 +58,14 @@ Fixed outliers in function
 Interactive visualization
 
      - TODO use function to capture all vertices above the boundary sulcus
+
+** 1-25-23
+Midnight scan club / kong parcellation - is a region more related to gyral height and sulcal dept
+
+Generate relationship between surface area of region, and gyral height
+
+** 2-1-23
+Capture the vertices above the boundary of sulcus
+
+
 * Issues 
