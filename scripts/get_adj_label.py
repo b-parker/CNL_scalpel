@@ -42,7 +42,7 @@ def surf_keep_cortex(surf, cortex):
     vertices, triangles = surf
 
     # keep only the vertices within the cortex label
-    cortex_vertices = array(vertices[cortex], dtype=float64)
+    cortex_vertices = np.array(vertices[cortex], dtype='float64')
 
     # keep only the triangles within the cortex label
     cortex_triangles = triangles_keep_cortex(triangles, cortex)
