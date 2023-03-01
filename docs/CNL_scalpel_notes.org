@@ -67,5 +67,12 @@ Generate relationship between surface area of region, and gyral height
 ** 2-1-23
 Capture the vertices above the boundary of sulcus
 
+** 2-5-23 
+Completed boundary vertices
+
+** 2-25-23
+Returned to class definition
+Identifying ROI verts and writing
+
 
 * Issues 
