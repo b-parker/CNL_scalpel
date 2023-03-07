@@ -78,6 +78,10 @@ Identifying ROI verts and writing
 Gdist to draw lines among vertices 
 getDistMatrix seems to need fmriprep surfaces, waiting for confirmation
 
+** 3-7-23
+gdist working
+pygeodesic 
+
 
 
 * Issues 
