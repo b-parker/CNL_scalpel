@@ -57,7 +57,7 @@ Fixed outliers in function
 
 Interactive visualization
 
-     - TODO use function to capture all vertices above the boundary sulcus
+     - use function to capture all vertices above the boundary sulcus
 
 ** 1-25-23
 Midnight scan club / kong parcellation - is a region more related to gyral height and sulcal dept
@@ -73,6 +73,11 @@ Completed boundary vertices
 ** 2-25-23
 Returned to class definition
 Identifying ROI verts and writing
+
+** 3-6-23
+Gdist to draw lines among vertices 
+getDistMatrix seems to need fmriprep surfaces, waiting for confirmation
+
 
 
 * Issues 

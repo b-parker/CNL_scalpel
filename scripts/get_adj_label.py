@@ -93,13 +93,28 @@ def getLabelIndices(sub,hemi,labels,cortex):
     return label_inds_all
 
 
-def getDistMatrix(fmriprep_derivatives_dir,annot_file,sub,hemi,savedir):
-    highres_surface = '%s/sub-%s/ses-%s/anat/sub-%s_ses-%s_hemi-%s_midthickness.surf.gii'%(fmriprep_derivatives_dir,sub,sub[-1],sub,sub[-1],hemi[0].upper())
-    giidata = nib.load(highres_surface)
-    giidata2 = squeeze(asarray([x.data for x in giidata.darrays])) 
+def getDistMatrix(subjects_dir=str, labels=str, sub=str, hemi=str, savedir=str, fmri_prep=False):
+    """
+    Outputs geodesic distances among all labels for a given sub/hemi
+    """
+    if fmri_prep == True:
+        highres_surface = '%s/sub-%s/ses-%s/anat/sub-%s_ses-%s_hemi-%s_midthickness.surf.gii'%(subjects_dir,sub,sub[-1],sub,sub[-1],hemi[0].upper())
+    if fmri_prep == False:
+        highres_surface = f'{subjects_dir}/{sub}/surf/{hemi}.pial.surf.gii'
+    
+    
+    giidata = nib.freesurfer.read_geometry(highres_surface)
+    print(giidata)
+    print(giidata.darrays[1].data)
+    giidata2 = np.squeeze(np.asarray([x.data for x in giidata.darrays])) 
     surf = (giidata2[0],giidata2[1])  
 
-    cort_file = '%s/sub-%s/label/%s.cortex.label'%(os.environ['SUBJECTS_DIR'],sub,hemi)
+    
+    if fmri_prep == True:
+        cort_file = '%s/sub-%s/label/%s.cortex.label'%(os.environ['SUBJECTS_DIR'],sub,hemi)
+    if fmri_prep == False:
+       cort_file = f'{subjects_dir}/{sub}/label/{hemi}.cortex.label'
+    
     cortex = sort(nib.freesurfer.read_label(cort_file))
 
     label_inds_all = getLabelIndices(sub,hemi,labels,cortex)
@@ -114,14 +129,15 @@ if __name__ == '__main__':
 
     sub = sys.argv[1]
     hemi = sys.argv[2]
+    subjects_dir = sys.argv[3]
 
-    outdir='/home/weiner/shakki/NotBackedUp/spatial_autocorrelation/%s/labelnw'%sub
+    outdir='~/Desktop/cnl/misc'
 #    outdir = '%s/spatial_autocorrelation/%s'%(os.getcwd(),sub)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    os.environ['SUBJECTS_DIR'] = '/home/weiner/Nora_PFCSulci/Projects/NORA_relmatch_funcNeuroAnat/data/subjects_v7'
-    fmriprep_derivatives_dir = '/home/weiner/Nora_PFCSulci/Projects/NORA_relmatch_funcNeuroAnat/data/bids/derivatives_v7'
+    os.environ['SUBJECTS_DIR'] = '~/Desktop/cnl/subjects'
+    #fmriprep_derivatives_dir = '/home/weiner/Nora_PFCSulci/Projects/NORA_relmatch_funcNeuroAnat/data/bids/derivatives_v7'
     #lpfc_labels = ['ifs','painfs_any','pmfs_a','pmfs_i','pmfs_p','sfs_a','sfs_p'] + ['prts','lfms','aalf']
     #lpar_labels = ['slos1','sB','pips','mTOS','lTOS','IPS-PO','IPS','cSTS1','cSTS2','cSTS3','aipsJ']
     mpar_labels = [] #['1','2','3','MCGS','POS','prculs','prcus1','prcus2','prcus3','sbps','sps']
@@ -129,5 +145,5 @@ if __name__ == '__main__':
     lpar_labels = [['slos1','slocs-v','SLOS'],'sB','pips','mTOS',['iTOS','ITOS','lTOS'],'IPS-PO','IPS','cSTS1','cSTS2','cSTS3','aipsJ']
     labels = lpfc_labels + lpar_labels + mpar_labels
 
-    getDistMatrix(fmriprep_derivatives_dir,labels,sub,hemi,outdir)
+    getDistMatrix(subjects_dir,labels,sub,hemi,outdir, fmri_prep=False)
 
