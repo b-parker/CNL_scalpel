@@ -5,6 +5,7 @@ import subprocess as sp
 import shlex
 import datetime
 from numpy.random import randint
+import json
 
 
 def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str, outdir: str = None):
@@ -108,6 +109,7 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     
     subject_sulci_dict = {}
 
+
     ### for subjects, check which paths exist and which dont,
     #  add to dictionary key fo subject_id based on label existence
 
@@ -123,13 +125,14 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
 
                 for i, label in enumerate(sulci_list):
                     if subject_label_paths[i].exists():
-                        f"{subject_id} has the {hemi} {label} label n/"
+                        #print(f"{subject_id} has the {hemi} {label} label")
                         existing_subject_labels_by_hemi.append(label)
                     else:
-                        f"{subject_id} does not have the {hemi} {label} label n/"
-                existing_subject_labels.append(existing_subject_labels_by_hemi)
+                        #print(f"{subject_id} does not have the {hemi} {label} label")
+                        pass
+                #existing_subject_labels.append(existing_subject_labels_by_hemi)
 
-            subject_sulci_dict[subject_id] = existing_subject_labels
+                subject_sulci_dict[f"{hemi}_{subject_id}"] = existing_subject_labels_by_hemi
 
     return subject_sulci_dict
 
@@ -150,18 +153,19 @@ def get_sulci_filepaths(subject_filepath: str, sulci_list: list, hemi: str) -> l
 
 
 
-def create_freesurfer_ctab(annot_name: str, label_list: str, outdir: str, pallete: list = [] ):
+def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete: list = [] ):
     '''
     Creates a color table file for label2annot 
+    TODO
     '''
     outdir_path = Path(outdir)
     assert outdir_path.exists(), f"{outdir.resolve()} does not exist"
 
-    ctab_name = ''.join([outdir, annot_name, '.ctab'])
+    ctab_path = ''.join([outdir, ctab_name, '.ctab'])
     date = datetime.datetime.now()
 
-    with open(ctab_name, 'w') as file:
-        file.write(f'#$Id: {ctab_name}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
+    with open(ctab_path, 'w') as file:
+        file.write(f'#$Id: {ctab_path}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
         file.write(f"No. Label Name:                R   G   B   A\n")
         file.write(f"0  Unknown         0   0   0   0\n")
         for i, label_name in enumerate(label_list):
@@ -171,7 +175,7 @@ def create_freesurfer_ctab(annot_name: str, label_list: str, outdir: str, pallet
 
     
 
-def create_ctabs_from_dict():
+def create_ctabs_from_dict(project_colortable_dir: str):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
@@ -179,15 +183,36 @@ def create_ctabs_from_dict():
 
 
 
-def annot_list_to_JSON():
+
+
+def annot_list_to_JSON(subject_sulci_dict: dict, outdir: str):
     '''
     Takes a list of subjects for a project and their respective sulcal presence
     and saves them to JSON file
+
+    INPUT:
+    subject_sulci_dict: dict = dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
+    outdir: str = write directory for json of colortables
+            NOTE: should be written to project directory for colortables
     '''
+
+    # Identify subjects with shared colortables
+    all_sulci = list(subject_sulci_dict.values())
+    unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
+
+    # Name the colortables
+    colortable_names = ['_'.join(sulci) for sulci in unique_sulci_lists]
+
+    # save colortable with user list
+
+    for subject in subject_sulci_dict.keys():
+        pass
+
+
 
 
 def main():
-    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
+    subjects_dir = '/Users/benparker/Desktop/cnl/subjects/'
     subject_list = get_subjects_list(subjects_list='/Users/benparker/Desktop/cnl/subjects/subjects_list.txt',
                                      subjects_dir=subjects_dir)
     
