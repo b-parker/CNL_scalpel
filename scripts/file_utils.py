@@ -3,6 +3,9 @@ import os
 import glob
 import subprocess as sp
 import shlex
+import datetime
+from numpy.random import randint
+
 
 def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str, outdir: str = None):
     '''
@@ -62,9 +65,10 @@ def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_
 
 
 
-def get_subjects_list(subjects_list: str, subjects_dir: str = os.environ('SUBJECTS_DIR')) -> list:
+def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     '''
     Turns txt subject list into list of filepaths
+    
     INPUTS:
     subjects_list: str = filepath to .txt subject list
     subjects_dir: str = filepath to subjects directory
@@ -90,21 +94,44 @@ def get_subjects_list(subjects_list: str, subjects_dir: str = os.environ('SUBJEC
 
 
 
-def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list, hemi: str) -> dict:
+def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     '''
     Sorts subject hemispheres into groups based on which sulci are present in each hemisphere
-    '''
-    ## TODO Output a dictionary, key = colortable name: str = <hemi_sulci>, value: list = subject_id
+    INPUT:
+    subject_filepath: list = output of get_subjects_list, a list of all full paths to subjects
 
-    ### for subjects, check which paths exist and which dont, add to dictionary key based on presences
-    for sub_path in subject_filepaths:
-        subject_path = Path(sub_path)
-        subject_id = subject_path.name
-        assert subject_path.exists(), f"{subject_id} does not exist at {subject_path}"
-        
-        subject_label_paths = get_sulci_filepaths(sub_path, sulci_list, hemi)
-        
-        for i, label in enumerate(sulci_list):
+    sulci_list : list = all possible sulci
+
+    OUTPUT:
+    subject_sulci_dict: dict = ={subject_id : [[lh_sulci_present, rh_sulci_present]]}
+    '''
+    
+    subject_sulci_dict = {}
+
+    ### for subjects, check which paths exist and which dont,
+    #  add to dictionary key fo subject_id based on label existence
+
+    for sub_idx, sub_path in enumerate(subject_filepaths):
+            existing_subject_labels = []
+            for hemi in ['lh', 'rh']:
+                subject_path = Path(sub_path)
+                subject_id = subject_path.name
+                assert subject_path.exists(), f"{subject_id} does not exist at {subject_path}"
+                
+                subject_label_paths = get_sulci_filepaths(sub_path, sulci_list, hemi)
+                existing_subject_labels_by_hemi = []
+
+                for i, label in enumerate(sulci_list):
+                    if subject_label_paths[i].exists():
+                        f"{subject_id} has the {hemi} {label} label n/"
+                        existing_subject_labels_by_hemi.append(label)
+                    else:
+                        f"{subject_id} does not have the {hemi} {label} label n/"
+                existing_subject_labels.append(existing_subject_labels_by_hemi)
+
+            subject_sulci_dict[subject_id] = existing_subject_labels
+
+    return subject_sulci_dict
 
 
 
@@ -123,16 +150,32 @@ def get_sulci_filepaths(subject_filepath: str, sulci_list: list, hemi: str) -> l
 
 
 
-
-
-
-
-
-def create_freesurfer_ctab(labels: str, outdir: str, pallete: list = [] ):
+def create_freesurfer_ctab(annot_name: str, label_list: str, outdir: str, pallete: list = [] ):
     '''
     Creates a color table file for label2annot 
     '''
+    outdir_path = Path(outdir)
+    assert outdir_path.exists(), f"{outdir.resolve()} does not exist"
 
+    ctab_name = ''.join([outdir, annot_name, '.ctab'])
+    date = datetime.datetime.now()
+
+    with open(ctab_name, 'w') as file:
+        file.write(f'#$Id: {ctab_name}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
+        file.write(f"No. Label Name:                R   G   B   A\n")
+        file.write(f"0  Unknown         0   0   0   0\n")
+        for i, label_name in enumerate(label_list):
+            file.write(f"{i + 1}    {label_name}                {randint(low=1, high=248)}  {randint(low=1, high=248)}  {randint(low=1, high=248)}  0\n")
+        
+
+
+    
+
+def create_ctabs_from_dict():
+    ''' 
+    Takes a dictionary of subjects and present sulci,
+    creates a colortable file for each unique combination of sulci
+    '''
 
 
 
@@ -142,6 +185,19 @@ def annot_list_to_JSON():
     and saves them to JSON file
     '''
 
+
+def main():
+    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
+    subject_list = get_subjects_list(subjects_list='/Users/benparker/Desktop/cnl/subjects/subjects_list.txt',
+                                     subjects_dir=subjects_dir)
+    
+    sulci_list = ['POS', '2', '3', 'MCGS']
+
+    sorted_sulci_dict = sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
+
+    create_freesurfer_ctab('test_annot', sulci_list, subjects_dir)
+
+    print(sorted_sulci_dict)
 
 
 if __name__ == "__main__":

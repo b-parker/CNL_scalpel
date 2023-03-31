@@ -85,3 +85,11 @@ pygeodesic
 
 
 * Issues 
+
+
+* Plan
+TODO
+Add funcitonal regions as annots
+Add datasets
+Add some clinical data as examples of aberrant development
+Chimps!
