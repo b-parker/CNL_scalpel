@@ -175,17 +175,25 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete
 
     
 
-def create_ctabs_from_dict(project_colortable_dir: str):
+def create_ctabs_from_dict(project_colortable_dir: str, json: str):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
     '''
+    json_file = open(json)
+
+    sulci_data = json.load(json_file)
+
+    all_sulci = list(sulci_data.values())
+    unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
+
+    for sulci_list in unique_sulci_lists:
+        
 
 
 
 
-
-def annot_list_to_JSON(subject_sulci_dict: dict, outdir: str):
+def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     '''
     Takes a list of subjects for a project and their respective sulcal presence
     and saves them to JSON file
@@ -195,18 +203,13 @@ def annot_list_to_JSON(subject_sulci_dict: dict, outdir: str):
     outdir: str = write directory for json of colortables
             NOTE: should be written to project directory for colortables
     '''
+    json_dict = json.dump(dictionary)
+    outdir = Path(outdir)
+    save_file = outdir / project_name
+    assert outdir.exists(), f"{outdir} does not exist"
 
-    # Identify subjects with shared colortables
-    all_sulci = list(subject_sulci_dict.values())
-    unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
-
-    # Name the colortables
-    colortable_names = ['_'.join(sulci) for sulci in unique_sulci_lists]
-
-    # save colortable with user list
-
-    for subject in subject_sulci_dict.keys():
-        pass
+    with open(save_file, 'w') as file:
+        file.write(json_dict)
 
 
 
