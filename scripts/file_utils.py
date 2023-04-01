@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-import glob
 import subprocess as sp
 import shlex
 import datetime
@@ -8,7 +7,7 @@ from numpy.random import randint
 import json
 
 
-def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str, outdir: str = None):
+def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
     Runs freesurfer label2annot 
     INPUT:
@@ -25,19 +24,10 @@ def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_
     ## Determine all paths exist
     assert Path(subject_path).exists(), f"Subject path does not exist: {subject_path}"
     assert Path(ctab_path).exists(), f"Color table does not exist: {ctab_path}"
+    assert Path(subjects_dir).exists(), f"SUBJECTS_DIR does not exist: {subjects_dir}"
 
-    subject_path = Path(subject_path)
+    os.environ['SUBJECTS_DIR'] = subjects_dir
     ctab_path = Path(ctab_path)
-
-    if not isinstance(outdir):
-        outdir = Path(outdir)
-    else:
-        outdir = subject_path / 'annots'
-
-    if not outdir.exists():
-        outdir.mkdir()
-    
-    assert outdir.exists(), f"Outdir path does not exist: {outdir}"
 
     ## Sort labels into strings 
 
@@ -45,13 +35,15 @@ def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_
 
     for label in label_list:
         label_for_cmd.append('--l')
-        label_filename = hemi + label + '.label'
-        label_for_cmd.append(label_filename)
+        label_filename = f"{hemi}.{label}.label"
+        label_filepath = f"{subject_path}/label/{label_filename}"
+        label_for_cmd.append(label_filepath)
 
-    subject_id = subject_path.name
+    subject_id = os.path.basename(subject_path)
     all_labels = ' '.join(label_for_cmd)
 
     ## Generate and run command 
+    
 
     cmd = f"mris_label2annot \
         --s {subject_id} \
@@ -62,7 +54,7 @@ def freesurfer_label2annot(subject_path: str, label_list: list, hemi: str, ctab_
     
     print(f'Calling: {cmd}')
 
-    sp.check_call(shlex.splt(cmd))
+    sp.Popen(shlex.split(cmd))
 
 
 
@@ -112,7 +104,7 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
 
     ### for subjects, check which paths exist and which dont
 
-    for sub_path in enumerate(subject_filepaths):
+    for sub_path in subject_filepaths:
         for hemi in ['lh', 'rh']:
             subject_path = Path(sub_path)
             subject_id = subject_path.name
@@ -172,20 +164,22 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete
 
     
 
-def create_ctabs_from_dict(project_colortable_dir: str, json: str):
+def create_ctabs_from_dict(project_colortable_dir: str, json_file: str):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
     '''
-    json_file = open(json)
+    print(json_file)
+    with open(json_file) as file:
+        sulci_dict = json.load(file)
 
-    sulci_data = json.load(json_file)
 
-    all_sulci = list(sulci_data.values())
+    all_sulci = list(sulci_dict.values())
     unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
 
     for sulci_list in unique_sulci_lists:
-        ctab_name = ''.join(sulci_list)
+        ctab_name = '_'.join(sulci_list)
+        print(f"Creating color table for {ctab_name}")
         create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
                                outdir=project_colortable_dir)
         
@@ -200,14 +194,15 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     subject_sulci_dict: dict = dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
     outdir: str = write directory for json of colortables
             NOTE: should be written to project directory for colortables
+    project_name: str = the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
     '''
-    json_dict = json.dump(dictionary)
-    outdir = Path(outdir)
-    save_file = outdir / project_name
-    assert outdir.exists(), f"{outdir} does not exist"
+    assert os.path.exists(outdir), f"{outdir} does not exist"
+    
+    save_file = os.path.join(outdir, f"{project_name}.json")
 
     with open(save_file, 'w') as file:
-        file.write(json_dict)
+        json.dump(dictionary, file, indent=4)
+
 
 
 
@@ -217,11 +212,40 @@ def main():
     subject_list = get_subjects_list(subjects_list='/Users/benparker/Desktop/cnl/subjects/subjects_list.txt',
                                      subjects_dir=subjects_dir)
     
+    
     sulci_list = ['POS', '2', '3', 'MCGS']
+    
 
     sorted_sulci_dict = sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
 
     create_freesurfer_ctab('test_annot', sulci_list, subjects_dir)
+
+    dict_to_JSON(sorted_sulci_dict, '/Users/benparker/Desktop/cnl/subjects', 'test_annot')
+    json_filename = f"{subjects_dir}test_annot.json"
+
+    create_ctabs_from_dict(subjects_dir, json_filename)
+
+    with open(json_filename) as file:
+        sulci_dict = json.load(file)
+    
+    ctab_project_dir = '/Users/benparker/Desktop/cnl/subjects/'
+
+    for subject_path in subject_list:
+        subject = os.path.basename(subject_path)
+        for hemi in ['lh', 'rh']:
+            sulcus_list = sulci_dict[f"{hemi}_{subject}"]
+            ctab_sulci = '_'.join(sulcus_list)
+            ctab_path = f"{ctab_project_dir}/{ctab_sulci}.ctab"
+
+            freesurfer_label2annot(subjects_dir,
+                                   subject_path, 
+                                   label_list=sulcus_list,
+                                   hemi=hemi,
+                                   ctab_path=ctab_path,
+                                   annot_name='test_annot'
+                                   )
+
+
 
     print(sorted_sulci_dict)
 
