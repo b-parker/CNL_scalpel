@@ -110,29 +110,28 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     subject_sulci_dict = {}
 
 
-    ### for subjects, check which paths exist and which dont,
-    #  add to dictionary key fo subject_id based on label existence
+    ### for subjects, check which paths exist and which dont
 
-    for sub_idx, sub_path in enumerate(subject_filepaths):
-            existing_subject_labels = []
-            for hemi in ['lh', 'rh']:
-                subject_path = Path(sub_path)
-                subject_id = subject_path.name
-                assert subject_path.exists(), f"{subject_id} does not exist at {subject_path}"
-                
-                subject_label_paths = get_sulci_filepaths(sub_path, sulci_list, hemi)
-                existing_subject_labels_by_hemi = []
+    for sub_path in enumerate(subject_filepaths):
+        for hemi in ['lh', 'rh']:
+            subject_path = Path(sub_path)
+            subject_id = subject_path.name
+            assert subject_path.exists(), f"{subject_id} does not exist at {subject_path}"
+            
+            subject_label_paths = get_sulci_filepaths(sub_path, sulci_list, hemi)
+            existing_subject_labels_by_hemi = []
 
-                for i, label in enumerate(sulci_list):
-                    if subject_label_paths[i].exists():
-                        #print(f"{subject_id} has the {hemi} {label} label")
-                        existing_subject_labels_by_hemi.append(label)
-                    else:
-                        #print(f"{subject_id} does not have the {hemi} {label} label")
-                        pass
-                #existing_subject_labels.append(existing_subject_labels_by_hemi)
-
-                subject_sulci_dict[f"{hemi}_{subject_id}"] = existing_subject_labels_by_hemi
+            for i, label in enumerate(sulci_list):
+                if subject_label_paths[i].exists():
+                    #print(f"{subject_id} has the {hemi} {label} label")
+                    existing_subject_labels_by_hemi.append(label)
+                else:
+                    #print(f"{subject_id} does not have the {hemi} {label} label")
+                    pass
+            #existing_subject_labels.append(existing_subject_labels_by_hemi)
+    
+    ##  add to dictionary key fo subject_id based on label existenc
+            subject_sulci_dict[f"{hemi}_{subject_id}"] = existing_subject_labels_by_hemi
 
     return subject_sulci_dict
 
@@ -170,8 +169,6 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete
         file.write(f"0  Unknown         0   0   0   0\n")
         for i, label_name in enumerate(label_list):
             file.write(f"{i + 1}    {label_name}                {randint(low=1, high=248)}  {randint(low=1, high=248)}  {randint(low=1, high=248)}  0\n")
-        
-
 
     
 
@@ -188,10 +185,11 @@ def create_ctabs_from_dict(project_colortable_dir: str, json: str):
     unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
 
     for sulci_list in unique_sulci_lists:
+        ctab_name = ''.join(sulci_list)
+        create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
+                               outdir=project_colortable_dir)
         
-
-
-
+        
 
 def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     '''
