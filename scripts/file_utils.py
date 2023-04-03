@@ -145,23 +145,34 @@ def get_sulci_filepaths(subject_filepath: str, sulci_list: list, hemi: str) -> l
 
 
 
-def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete: list = [] ):
+def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, pallete: list = None ):
     '''
     Creates a color table file for label2annot 
-    TODO
+    
+    INPUTS:
+    ctab_name: str = desired name of color table
+    label_list: list = list of strings containing all desired labels
+    outdir: str = desired output directory
+    pallete: list = custom colors - list of strings containing rgb values for each label, separated by tab - i.e. ["int<tab>int<tab>int", ...]
     '''
+    
     outdir_path = Path(outdir)
     assert outdir_path.exists(), f"{outdir.resolve()} does not exist"
 
     ctab_path = ''.join([outdir, ctab_name, '.ctab'])
     date = datetime.datetime.now()
 
+    if isinstance(pallete, None):
+        pallete = [f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list]
+    else:
+        assert len(pallete) == len(label_list), f"Pallete length does not match label list length"
+
     with open(ctab_path, 'w') as file:
         file.write(f'#$Id: {ctab_path}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
         file.write(f"No. Label Name:                R   G   B   A\n")
         file.write(f"0  Unknown         0   0   0   0\n")
         for i, label_name in enumerate(label_list):
-            file.write(f"{i + 1}    {label_name}                {randint(low=1, high=248)}  {randint(low=1, high=248)}  {randint(low=1, high=248)}  0\n")
+            file.write(f"{i + 1}    {label_name}                {pallete[i]}  0\n")
 
     
 
