@@ -11,12 +11,13 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
     '''
     Runs freesurfer label2annot 
     INPUT:
+    subjects_dir: str = freesurfer subjects directory, os.environ['SUBEJCTS_DIR] called below
     subject_path: str = filepath to subject's directory
     label_list: str = list of strings containing all desired labels
     hemi: str = hemisphere
     ctab_path: str = filepath to color table
     annot_name: str = desired label name to save annot
-    outdir: str = directory to write the annot, DEFAULT /annots file within subjects /label 
+    
 
     OUTPUT:
     annot of the location <outdir>/<hemi>.<annot_name>.annot
@@ -120,7 +121,7 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
                 else:
                     #print(f"{subject_id} does not have the {hemi} {label} label")
                     pass
-            #existing_subject_labels.append(existing_subject_labels_by_hemi)
+            
     
     ##  add to dictionary key fo subject_id based on label existenc
             subject_sulci_dict[f"{hemi}_{subject_id}"] = existing_subject_labels_by_hemi
@@ -203,52 +204,59 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     with open(save_file, 'w') as file:
         json.dump(dictionary, file, indent=4)
 
+def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_copy: bool = True):
+    '''
+    Renames labels in a given hemisphere for all subjects in a given subjects list
+    INPUT:
+    subjects_dir: str = filepath to subjects directory
+    subjects_list: str = filepath to subjects list
+    sulci_list: dict = dict of sulci,{old_name: new_name}
+    by_copy: bool = if True, copies files by cp (keeps original file)
+    
+    '''
+    assert os.path.exists(subjects_dir), f"{subjects_dir} does not exist"
+    assert os.path.exists(subjects_list), f"{subjects_list} does not exist"
+    
+    subject_filepaths = get_subjects_list(subjects_list, subjects_dir)
+    
+    if by_copy == True:
+        # Copies files by cp (keeps original file)
+        for subject_path in subject_filepaths:
+    
+            assert os.path.exists(subject_path), f"The subject does not exist at {subject_path}"
 
+            for hemi in ['lh', 'rh']:
+                for sulcus in sulci_dict.items():
+                    cmd = f"cp {subject_path}/label/{hemi}.{sulcus[0]}.label {subject_path}/label/{hemi}.{sulcus[1]}.label"
+                    print(f"Executing: {cmd}")
+                    sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
+    else:
+        # Renames files my mv
+        for subject_path in subject_filepaths:
+    
+            assert os.path.exists(subject_path), f"The subject does not exist at {subject_path}"
 
+            for hemi in ['lh', 'rh']:
+                for sulcus in sulci_dict.items():
+                    cmd = f"mv {subject_path}/label/{hemi}.{sulcus[0]}.label {subject_path}/label/{hemi}.{sulcus[1]}.label"
+                    print(f"Executing: {cmd}")
+                    sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
 
 
 def main():
-    subjects_dir = '/Users/benparker/Desktop/cnl/subjects/'
-    subject_list = get_subjects_list(subjects_list='/Users/benparker/Desktop/cnl/subjects/subjects_list.txt',
-                                     subjects_dir=subjects_dir)
-    
-    
-    sulci_list = ['POS', '2', '3', 'MCGS']
-    
+    subjects_dir = '/Users/benparker/Desktop/cnl/neurocluster/HCP/subjects'   
+    subjects_list = '/Users/benparker/Desktop/cnl/neurocluster/HCP/subject_lists/HCP_processed_subs.txt'
+    sulci_dict = {'2' : 'ifrms', '1' : 'sspls_d'}
 
-    sorted_sulci_dict = sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
+    rename_labels(subjects_dir, subjects_list, sulci_dict, by_copy=True)
 
-    create_freesurfer_ctab('test_annot', sulci_list, subjects_dir)
-
-    dict_to_JSON(sorted_sulci_dict, '/Users/benparker/Desktop/cnl/subjects', 'test_annot')
-    json_filename = f"{subjects_dir}test_annot.json"
-
-    create_ctabs_from_dict(subjects_dir, json_filename)
-
-    with open(json_filename) as file:
-        sulci_dict = json.load(file)
-    
-    ctab_project_dir = '/Users/benparker/Desktop/cnl/subjects/'
-
-    for subject_path in subject_list:
-        subject = os.path.basename(subject_path)
-        for hemi in ['lh', 'rh']:
-            sulcus_list = sulci_dict[f"{hemi}_{subject}"]
-            ctab_sulci = '_'.join(sulcus_list)
-            ctab_path = f"{ctab_project_dir}/{ctab_sulci}.ctab"
-
-            freesurfer_label2annot(subjects_dir,
-                                   subject_path, 
-                                   label_list=sulcus_list,
-                                   hemi=hemi,
-                                   ctab_path=ctab_path,
-                                   annot_name='test_annot'
-                                   )
-
-
-
-    print(sorted_sulci_dict)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+
+
+
+
+
+
+
+
