@@ -229,29 +229,41 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
                 for sulcus in sulci_dict.items():
                     cmd = f"cp {subject_path}/label/{hemi}.{sulcus[0]}.label {subject_path}/label/{hemi}.{sulcus[1]}.label"
                     print(f"Executing: {cmd}")
-                    sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
+                    run_cmd = sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
+
+                    
+                    out, err = run_cmd.communicate()
+
+                    if run_cmd.returncode == 0:
+                        pass
+                    else:
+                        print(f"out: {out}")
+                        print(f"err: {err}")
+                        print(f'Be sure that {hemi}.{sulcus[0]}.label exists in {subject_path}')
+                    
+
     else:
-        # Renames files my mv
+        # Renames files by mv
         for subject_path in subject_filepaths:
     
             assert os.path.exists(subject_path), f"The subject does not exist at {subject_path}"
 
             for hemi in ['lh', 'rh']:
                 for sulcus in sulci_dict.items():
+                    
                     cmd = f"mv {subject_path}/label/{hemi}.{sulcus[0]}.label {subject_path}/label/{hemi}.{sulcus[1]}.label"
                     print(f"Executing: {cmd}")
-                    sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
+                    run_cmd = sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
 
+                    out, err = run_cmd.communicate()
 
-def main():
-    subjects_dir = '/Users/benparker/Desktop/cnl/neurocluster/HCP/subjects'   
-    subjects_list = '/Users/benparker/Desktop/cnl/neurocluster/HCP/subject_lists/HCP_processed_subs.txt'
-    sulci_dict = {'2' : 'ifrms', '1' : 'sspls_d'}
-
-    rename_labels(subjects_dir, subjects_list, sulci_dict, by_copy=True)
-
-if __name__ == '__main__':
-    main()
+                    if run_cmd.returncode == 0:
+                        pass
+                    else:
+                        print(f"out: {out}")
+                        print(f"err: {err}")
+                        print(f'Be sure that {hemi}.{sulcus[0]}.label exists in {subject_path}')
+                    
 
 
 
