@@ -10,7 +10,8 @@ def remove_label(file_path):
 
 def main():
     project_dir = '/home/weiner/HCP'
-    subject_paths = freesurfer_utils.get_subjects_list(f"{project_dir}/subject_lists/HCP_processed_subs.txt")
+    subjects_dir = f"{project_dir}/subjects"
+    subject_paths = freesurfer_utils.get_subjects_list(f"{project_dir}/subject_lists/HCP_processed_subs.txt", subjects_dir)
     for subject_path in subject_paths:
         label_files = glob.glob(f"{subject_path}/label/?h.WillbrandParker_SciAdv_2022.annot")
         for label_file in label_files:
