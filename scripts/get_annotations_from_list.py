@@ -1,4 +1,4 @@
-import file_utils
+import freesurfer_utils
 import json
 import os
 
@@ -7,7 +7,7 @@ def main():
 
     subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt"
 
-    subject_list = file_utils.get_subjects_list(subjects_list=subjects_list_path,
+    subject_list = freesurfer_utils.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     project_dir='/home/weiner/HCP/projects/ifrms_HCP/annot_ctab_json/'
 
@@ -32,19 +32,19 @@ def main():
                     'icgs_p': '174 243 254',}
     
     # Save color table as json in <project directory> with colors_<annotation_name>.json as filename
-    file_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
+    freesurfer_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
 
-    sorted_sulci_dict = file_utils.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
-    file_utils.create_freesurfer_ctab(ctab_name=annotation_name, label_list=sulci_list, outdir=project_dir, palette=sulci_colors)
+    sorted_sulci_dict = freesurfer_utils.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
+    freesurfer_utils.create_freesurfer_ctab(ctab_name=annotation_name, label_list=sulci_list, outdir=project_dir, palette=sulci_colors)
 
     # Create json in <project directory> with <annotation_name>.json as filename
 
-    file_utils.dict_to_JSON(dictionary=sorted_sulci_dict, outdir=project_dir, project_name=annotation_name)
+    freesurfer_utils.dict_to_JSON(dictionary=sorted_sulci_dict, outdir=project_dir, project_name=annotation_name)
     
     json_filename = f"{project_dir}/{annotation_name}.json"
 
     # Create colortables for all existing sulci combinations; store in <project_dir>
-    file_utils.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename)
+    freesurfer_utils.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename)
 
     with open(json_filename) as file:
         sulci_dict = json.load(file)
@@ -57,7 +57,7 @@ def main():
             ctab_sulci = '_'.join(sulcus_list)
             ctab_path = f"{project_dir}/{ctab_sulci}.ctab"
 
-            file_utils.freesurfer_label2annot(subjects_dir,
+            freesurfer_utils.freesurfer_label2annot(subjects_dir,
                                    subject_path, 
                                    label_list=sulcus_list,
                                    hemi=hemi,
