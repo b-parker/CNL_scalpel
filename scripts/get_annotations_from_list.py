@@ -46,7 +46,7 @@ def main():
     json_filename = f"{project_dir}/{annotation_name}.json"
 
     # Create colortables from that dictionary; store in <project_dir>
-    freesurfer_utils.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename, sulci_list=sulci_list, palette=sulci_colors)
+    freesurfer_utils.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename, palette=sulci_colors)
 
     with open(json_filename) as file:
         sulci_dict = json.load(file)
