@@ -157,7 +157,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
 
     ctab_path = ''.join([outdir, ctab_name, '.ctab'])
     date = datetime.datetime.now()
-
+    print(f"///////////////////////////// \n \n \n {palette} \n \n \n /////////////////////////////")
     if palette == None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
