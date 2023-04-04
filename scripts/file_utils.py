@@ -87,7 +87,6 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     
 
 
-
 def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     '''
     Sorts subject hemispheres into groups based on which sulci are present in each hemisphere
@@ -101,7 +100,6 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     '''
     
     subject_sulci_dict = {}
-
 
     ### for subjects, check which paths exist and which dont
 
@@ -143,8 +141,6 @@ def get_sulci_filepaths(subject_filepath: str, sulci_list: list, hemi: str) -> l
 
 
 
-
-
 def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette: dict = None ):
     '''
     Creates a color table file for label2annot 
@@ -165,7 +161,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     if isinstance(palette, None):
         palette = [f"{label} : {randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list]
     else:
-        assert len(palette) == len(label_list), f"Pallete length does not match label list length"
+        assert len(palette) == len(label_list), f"Palette length does not match label list length"
 
     with open(ctab_path, 'w') as file:
         file.write(f'#$Id: {ctab_path}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
@@ -215,6 +211,7 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     with open(save_file, 'w') as file:
         json.dump(dictionary, file, indent=4)
 
+
 def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_copy: bool = True):
     '''
     Renames labels in a given hemisphere for all subjects in a given subjects list
@@ -222,7 +219,7 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
     subjects_dir: str = filepath to subjects directory
     subjects_list: str = filepath to subjects list
     sulci_list: dict = dict of sulci,{old_name: new_name}
-    by_copy: bool = if True, copies files by cp (keeps original file)
+    by_copy: bool = if True, copies files by cp (keeps original file) ; if False, renames files by mv (deletes original file)
     
     '''
     assert os.path.exists(subjects_dir), f"{subjects_dir} does not exist"
@@ -242,7 +239,6 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
                     print(f"Executing: {cmd}")
                     run_cmd = sp.Popen(shlex.split(cmd), stdout=sp.PIPE, stderr=sp.PIPE)
 
-                    
                     out, err = run_cmd.communicate()
 
                     if run_cmd.returncode == 0:
@@ -254,7 +250,7 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
                     
 
     else:
-        # Renames files by mv
+        # Renames files by mv (removes original file)
         for subject_path in subject_filepaths:
     
             assert os.path.exists(subject_path), f"The subject does not exist at {subject_path}"
