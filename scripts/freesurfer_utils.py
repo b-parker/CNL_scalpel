@@ -158,8 +158,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     ctab_path = ''.join([outdir, ctab_name, '.ctab'])
     date = datetime.datetime.now()
 
-    if isinstance(palette, type(None)):
-        palette = dict(f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list)
+    if palette is None:        palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
         assert len(palette) == len(label_list), f"Palette length does not match label list length"
 
