@@ -172,24 +172,40 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
 
     
 
-def create_ctabs_from_dict(project_colortable_dir: str, json_file: str):
+def create_ctabs_from_dict(project_colortable_dir: str, json_file: str, palette: dict = None):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
+
+    INPUT:
+    project_colortable_dir: str = filepath to project colortable directory
+    json_file: str = filepath to json file containing subject sulci dictionary
+    sulci_list: list = list of all possible sulci
+    palette: dict = custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
     '''
     print(json_file)
     with open(json_file) as file:
         sulci_dict = json.load(file)
 
+    # get all sulci in dictionary
+    all_sulci_in_dict = list(sulci_dict.values())
+    # get unique sulci in dictionary, identical to list of all possible sulci
+    all_sulci = list(sulci_dict.values()).unique()
+    # get unique combinations of sulci 
+    unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci_in_dict)]
+    
+    if palette == None:        
+        palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
+    else:
+        assert len(palette) == len(sulci_list), f"Palette length does not match label list length"
 
-    all_sulci = list(sulci_dict.values())
-    unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci)]
+
 
     for sulci_list in unique_sulci_lists:
         ctab_name = '_'.join(sulci_list)
         print(f"Creating color table for {ctab_name}")
-        create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
-                               outdir=project_colortable_dir)
+        create_freesurfer_ctab(ctab_name=ctab_name, label_list=all_sulci,
+                               outdir=project_colortable_dir, palette=palette)
         
         
 
