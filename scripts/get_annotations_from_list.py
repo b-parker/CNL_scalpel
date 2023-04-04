@@ -19,9 +19,24 @@ def main():
 
     ##TODO check to see if project_dir/annot_ctab_json exists, create if not
 
+    sulci_colors = {'MCGS': '' ,
+                    'POS': '',
+                    'prculs': '',
+                    'prcus1': '',
+                    'prcus2': '',
+                    'prcus3': '', 
+                    'sbps': '', 
+                    'ifrms': '',
+                    'sspls_d': '', 
+                    'icgs_p': '',
+                    'pmcgs' : '',
+                    'sspls_v' : '', 
+                    'prculs_v' : '', 
+                    'isms': ''}
+
    
     sorted_sulci_dict = file_utils.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
-    file_utils.create_freesurfer_ctab(ctab_name=annotation_name, label_list=sulci_list, outdir=project_dir)
+    file_utils.create_freesurfer_ctab(ctab_name=annotation_name, label_list=sulci_list, outdir=project_dir, palette=sulci_colors)
 
     # Create json in <project directory> with <annotation_name>.json as filename
 
