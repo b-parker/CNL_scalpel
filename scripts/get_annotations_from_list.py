@@ -13,28 +13,27 @@ def main():
 
     annotation_name = 'WillbrandParker_SciAdv_2022'
     
-    sulci_list = ['MCGS', 'POS', 'prculs', 'prcus1', 'prcus2', 'prcus3', 'sbps', 'ifrms', 'sspls_d', 'icgs_p', 'pmcgs', 'sspls_v', 'prculs_v', 'isms']
-
+    sulci_list = ['MCGS', 'POS', 'prculs', 'prcus_p', 'prcus_i', 'prcus_a', 'spls', 'ifrms', 'sps', 'sspls_d', 'icgs_p']
+ 
     ## Create color table
 
     ##TODO check to see if project_dir/annot_ctab_json exists, create if not
 
-    sulci_colors = {'MCGS': '' ,
-                    'POS': '',
-                    'prculs': '',
-                    'prcus1': '',
-                    'prcus2': '',
-                    'prcus3': '', 
-                    'sbps': '', 
-                    'ifrms': '',
-                    'sspls_d': '', 
-                    'icgs_p': '',
-                    'pmcgs' : '',
-                    'sspls_v' : '', 
-                    'prculs_v' : '', 
-                    'isms': ''}
+    sulci_colors = {'MCGS': '99 180 193' ,
+                    'POS': '128 127 184',
+                    'prculs': '159  157 200',
+                    'prcus_p': '83  151 62',
+                    'prcus_i': '150 83 89',
+                    'prcus_a': '190 225 149', 
+                    'spls': '134 190 125', 
+                    'ifrms': '221 75 57',
+                    'sps': '0   66  145',
+                    'sspls_d': '159 246 77', 
+                    'icgs_p': '174 243 254',}
+    
+    # Save color table as json in <project directory> with colors_<annotation_name>.json as filename
+    file_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
 
-   
     sorted_sulci_dict = file_utils.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
     file_utils.create_freesurfer_ctab(ctab_name=annotation_name, label_list=sulci_list, outdir=project_dir, palette=sulci_colors)
 
