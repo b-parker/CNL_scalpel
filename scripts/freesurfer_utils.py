@@ -194,7 +194,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci_in_dict)]
     
     if palette == None:        
-        palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
+        palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in sulci_list}
     else:
         print(palette.keys())
         print(sulci_list)

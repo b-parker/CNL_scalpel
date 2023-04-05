@@ -10,7 +10,7 @@ def main():
     subject_list = freesurfer_utils.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
-    project_dir='/home/weiner/HCP/projects/Miller_JNeuro/annot_ctab_json/'
+    project_dir='/home/weiner/HCP/projects/Miller_JNeuro_2021/annot_ctab_json/'
 
     annotation_name = 'Miller_JNeuro_2021'
     
