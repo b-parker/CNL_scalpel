@@ -157,7 +157,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
 
     ctab_path = ''.join([outdir, ctab_name, '.ctab'])
     date = datetime.datetime.now()
-    print(f"///////////////////////////// \n \n \n {palette} \n \n \n /////////////////////////////")
+
     if palette == None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
@@ -204,7 +204,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
 
 
     for unique_sulci_list in unique_sulci_lists:
-        ctab_name = '_'.join(unique_sulci_list)
+        ctab_name = '-'.join(unique_sulci_list)
         print(f"Creating color table for {ctab_name}")
         create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
                                outdir=project_colortable_dir, palette=palette)
