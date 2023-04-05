@@ -5,7 +5,7 @@ import shlex
 import datetime
 from numpy.random import randint
 import json
-
+import numpy as np
 
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
@@ -172,7 +172,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
 
     
 
-def create_ctabs_from_dict(project_colortable_dir: str, json_file: str, palette: dict = None):
+def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_file: str, palette: dict = None):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
@@ -189,22 +189,24 @@ def create_ctabs_from_dict(project_colortable_dir: str, json_file: str, palette:
 
     # get all sulci in dictionary
     all_sulci_in_dict = list(sulci_dict.values())
-    # get unique sulci in dictionary, identical to list of all possible sulci
-    all_sulci = list(sulci_dict.values()).unique()
+    
     # get unique combinations of sulci 
     unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci_in_dict)]
     
     if palette == None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
-        assert len(palette) == len(sulci_list), f"Palette length does not match label list length"
+        print(palette.keys())
+        print(sulci_list)
+        
+        assert len(palette.keys()) == len(sulci_list), f"Palette length does not match label list length"
 
 
 
-    for sulci_list in unique_sulci_lists:
-        ctab_name = '_'.join(sulci_list)
+    for unique_sulci_list in unique_sulci_lists:
+        ctab_name = '_'.join(unique_sulci_list)
         print(f"Creating color table for {ctab_name}")
-        create_freesurfer_ctab(ctab_name=ctab_name, label_list=all_sulci,
+        create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
                                outdir=project_colortable_dir, palette=palette)
         
         
