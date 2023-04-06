@@ -1,5 +1,6 @@
 
 import pandas as pd
+import numpy as np
 
 def read_label(label_name):
     """
@@ -13,7 +14,7 @@ def read_label(label_name):
     -------
     vertices: index of the vertex in the label np.array [n_vertices] 
     RAS_coords: columns are the X,Y,Z RAS coords associated with vertex number in the label, np.array [n_vertices, 3] 
-    
+        NOTE: RAS coordinates are on the WHITE MATTER surface i.e. {hemi}.white
     """
     
     # read label file, excluding first two lines of descriptor 
