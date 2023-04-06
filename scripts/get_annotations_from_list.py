@@ -5,34 +5,48 @@ import os
 def main():
     subjects_dir = '/home/weiner/HCP/subjects'
 
-    subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs.txt"
+    subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt"
 
     subject_list = freesurfer_utils.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
-    project_dir='/home/weiner/HCP/projects/Miller_JNeuro_2021/annot_ctab_json/'
+    project_dir='/home/weiner/HCP/projects/WillbrandMaboudian_CommBio_2023/annot_ctab_json/'
 
-    annotation_name = 'Miller_JNeuro_2021'
+    annotation_name = 'WillbrandMaboudian_CommBio_2023'
     
-    sulci_list = ['central', 'sprs', 'iprs', 'sfs_a', 'sfs_p', 'pmfs_p', 'pmfs_i', 'pmfs_a', 'ifs', 'infs_h', 'infs_v', 'painfs_d', 'painfs_v']
+    sulci_list = ['MCGS',
+                    'POS',
+                    'prculs',
+                    'prcus_p',
+                    'prcus_i',
+                    'prcus_a', 
+                    'spls', 
+                    'ifrms',
+                    'sps',
+                    'sspls_d', 
+                    'icgs_p',
+                    'pmcgs',
+                    'sspls_v',
+                    'prculs_v',
+                    'isms']
  
     ## Create color table
 
-    # sulci_colors = {'MCGS': '99 180 193' ,
-    #                 'POS': '128 127 184',
-    #                 'prculs': '159  157 200',
-    #                 'prcus_p': '83  151 62',
-    #                 'prcus_i': '150 83 89',
-    #                 'prcus_a': '190 225 149', 
-    #                 'spls': '134 190 125', 
-    #                 'ifrms': '221 75 57',
-    #                 'sps': '0   66  145',
-    #                 'sspls_d': '159 246 77', 
-    #                 'icgs_p': '174 243 254',
-    #                 'pmcgs': '204 157 66',
-    #                 'sspls_v': '255 118 32',
-    #                 'prculs_v': '255 118 104',
-    #                 'isms': '33 224 104'}
+    sulci_colors = {'MCGS': '99 180 193' ,
+                    'POS': '128 127 184',
+                    'prculs': '159  157 200',
+                    'prcus_p': '83  151 62',
+                    'prcus_i': '150 83 89',
+                    'prcus_a': '190 225 149', 
+                    'spls': '134 190 125', 
+                    'ifrms': '221 75 57',
+                    'sps': '0   66  145',
+                    'sspls_d': '159 246 77', 
+                    'icgs_p': '174 243 254',
+                    'pmcgs': '204 157 66',
+                    'sspls_v': '255 118 32',
+                    'prculs_v': '255 118 104',
+                    'isms': '33 224 104'}
     
     # Save color table as json in <project directory> with colors_<annotation_name>.json as filename
     #freesurfer_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
