@@ -6,6 +6,7 @@ import datetime
 from numpy.random import randint
 import json
 import numpy as np
+import tarfile
 
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
@@ -288,10 +289,47 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
                         print(f"out: {out}")
                         print(f"err: {err}")
                         print(f'Be sure that {hemi}.{sulcus[0]}.label exists in {subject_path}')
-                    
 
 
+def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_list: str, subjects_dir: str): 
+    """
+    Creates a compressed .tar.gz file from a list of subjects recursively. 
+        NOTE: This will add ALL files located in freesurfer subject directory
 
+    INPUT:
+    project_dir : str - filepath to project directory where tar will be written
+    tarfile_name : str - name for tar archive
+    subject_list : str - filepath to .txt list of subjects
+    subjects_dir : str - filepath freesurfer subjects directory
+
+    
+    """
+    # Get subject list
+    subject_list = get_subjects_list(subjects_dir=subjects_dir, subjects_list=subject_list)
+    
+    # check suffix and remove
+    if tarfile_name[-7:] == '.tar.gz':
+        tarfile_name = tarfile_name[:-7]
+    
+    assert os.path.exists(project_dir), "{project_dir} does not exist"
+
+    # Check if tar exists
+    try:
+        with tarfile.open(f"{project_dir}/{tarfile_name}.tar.gz", mode='x:gz') as tar:
+            for subject_dir in subject_list:
+                tar.add(subject_dir, recursive=True)
+    except FileExistsError:
+        print(f'{tarfile_name}.tar.gz already exists.')
+
+        add_to_tar = input('Do you want to add the subjects to this existing tarfile?')
+        if add_to_tar == 'y' or 'Y' or 'Yes' or 'yes':
+         
+         with tarfile.open(f"{project_dir}{tarfile_name}.tar.gz", mode='x:gz') as tar:
+            for subject_dir in subject_list:
+                tar.add(subject_dir, recursive=True)
+        else: 
+            print(f'Subjects not added to {tarfile_name}. Function ended')
+      
 
 
 
