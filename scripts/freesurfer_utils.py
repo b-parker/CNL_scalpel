@@ -302,7 +302,7 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     subject_list : str - filepath to .txt list of subjects
     subjects_dir : str - filepath freesurfer subjects directory
 
-    
+
     """
     # Get subject list
     subject_list = get_subjects_list(subjects_dir=subjects_dir, subjects_list=subject_list)
@@ -316,22 +316,20 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     # Check if tar exists
     try:
         with tarfile.open(f"{project_dir}/{tarfile_name}.tar.gz", mode='x:gz') as tar:
+            print('Creating {tarfile_name} \n')
             for subject_dir in subject_list:
                 tar.add(subject_dir, recursive=True)
     except FileExistsError:
-        print(f'{tarfile_name}.tar.gz already exists.')
+        print(f'\n{tarfile_name}.tar.gz already exists. \n')
 
-        add_to_tar = input('Do you want to add the subjects to this existing tarfile?')
-        if add_to_tar == 'y' or 'Y' or 'Yes' or 'yes':
+        add_to_tar = input('Do you want to add the subjects to this existing tarfile? [y/n] ').lower()
+        if add_to_tar == 'y' or add_to_tar == 'yes':
+         print('\nAdding\n')
          
-         with tarfile.open(f"{project_dir}{tarfile_name}.tar.gz", mode='x:gz') as tar:
+         with tarfile.open(f"{project_dir}{tarfile_name}.tar.gz", mode='w:gz') as tar:
             for subject_dir in subject_list:
                 tar.add(subject_dir, recursive=True)
         else: 
-            print(f'Subjects not added to {tarfile_name}. Function ended')
+            print(f'\nSubjects not added to {tarfile_name}.\n')
       
-
-
-
-
 
