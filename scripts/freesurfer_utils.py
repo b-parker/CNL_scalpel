@@ -11,6 +11,7 @@ import tarfile
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
     Runs freesurfer label2annot 
+
     INPUT:
     subjects_dir: str = freesurfer subjects directory, os.environ['SUBEJCTS_DIR] called below
     subject_path: str = filepath to subject's directory
@@ -64,11 +65,11 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     '''
     Turns txt subject list into list of filepaths
     
-    INPUTS:
+    INPUT:
     subjects_list: str = filepath to .txt subject list
     subjects_dir: str = filepath to subjects directory
 
-    OUTPUTS:
+    OUTPUT:
     subjects_filepaths: list: list of subject filepaths as strings
     '''
     
@@ -91,13 +92,14 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
 def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     '''
     Sorts subject hemispheres into groups based on which sulci are present in each hemisphere
-    INPUT:
-    subject_filepath: list = output of get_subjects_list, a list of all full paths to subjects
 
-    sulci_list : list = all possible sulci
+    INPUT:
+    subject_filepath : list - output of get_subjects_list, a list of all full paths to subjects
+
+    sulci_list : list - all possible sulci
 
     OUTPUT:
-    subject_sulci_dict: dict = ={subject_id : [[lh_sulci_present, rh_sulci_present]]}
+    subject_sulci_dict : dict - {subject_id : [[lh_sulci_present, rh_sulci_present]]}
     '''
     
     subject_sulci_dict = {}
@@ -146,11 +148,11 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     '''
     Creates a color table file for label2annot 
     
-    INPUTS:
-    ctab_name: str = desired name of color table
-    label_list: list = list of strings containing all desired labels
-    outdir: str = desired output directory
-    pallete: list = custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
+    INPUT:
+    ctab_name : str - desired name of color table
+    label_list : list - list of strings containing all desired labels
+    outdir : str - desired output directory
+    pallete : list - custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
     '''
     
     outdir_path = Path(outdir)
@@ -179,10 +181,10 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     creates a colortable file for each unique combination of sulci
 
     INPUT:
-    project_colortable_dir: str = filepath to project colortable directory
-    json_file: str = filepath to json file containing subject sulci dictionary
-    sulci_list: list = list of all possible sulci
-    palette: dict = custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
+    project_colortable_dir : str - filepath to project colortable directory
+    json_file : str - filepath to json file containing subject sulci dictionary
+    sulci_list : list - list of all possible sulci
+    palette : dict - custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
     '''
     print(json_file)
     with open(json_file) as file:
@@ -218,10 +220,10 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     and saves them to JSON file
 
     INPUT:
-    subject_sulci_dict: dict = dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
-    outdir: str = write directory for json of colortables
+    subject_sulci_dict : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
+    outdir : str - write directory for json of colortables
             NOTE: should be written to project directory for colortables
-    project_name: str = the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
+    project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
     '''
     assert os.path.exists(outdir), f"{outdir} does not exist"
     
@@ -234,11 +236,12 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
 def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_copy: bool = True):
     '''
     Renames labels in a given hemisphere for all subjects in a given subjects list
+
     INPUT:
-    subjects_dir: str = filepath to subjects directory
-    subjects_list: str = filepath to subjects list
-    sulci_list: dict = dict of sulci,{old_name: new_name}
-    by_copy: bool = if True, copies files by cp (keeps original file) ; if False, renames files by mv (deletes original file)
+    subjects_dir : str - filepath to subjects directory
+    subjects_list : str - filepath to subjects list
+    sulci_list : dict - dict of sulci,{old_name: new_name}
+    by_copy : bool - if True, copies files by cp (keeps original file) ; if False, renames files by mv (deletes original file)
     
     '''
     assert os.path.exists(subjects_dir), f"{subjects_dir} does not exist"
@@ -320,6 +323,7 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
             for subject_dir in subject_list:
                 tar.add(subject_dir, recursive=True)
     except FileExistsError:
+        # if tar exists, confirm user wants to add new subjects to tar
         print(f'\n{tarfile_name}.tar.gz already exists. \n')
 
         add_to_tar = input('Do you want to add the subjects to this existing tarfile? [y/n] ').lower()
