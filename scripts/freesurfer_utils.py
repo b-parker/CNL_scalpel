@@ -298,7 +298,6 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     """
     Creates a compressed .tar.gz file from a list of subjects recursively. 
         NOTE: This will add ALL files located in freesurfer subject directory
-
     INPUT:
     project_dir : str - filepath to project directory where tar will be written
     tarfile_name : str - name for tar archive
@@ -319,12 +318,13 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     # Check if tar exists
     try:
         with tarfile.open(f"{project_dir}/{tarfile_name}.tar.gz", mode='x:gz') as tar:
-            print('Creating {tarfile_name} \n')
+            print(f'Creating {tarfile_name} \n')
             for subject_dir in subject_list:
                 tar.add(subject_dir, recursive=True)
+            print('tarfile created.')
     except FileExistsError:
         # if tar exists, confirm user wants to add new subjects to tar
-        print(f'\n{tarfile_name}.tar.gz already exists. \n')
+        print(f'\n {tarfile_name}.tar.gz already exists. \n')
 
         add_to_tar = input('Do you want to add the subjects to this existing tarfile? [y/n] ').lower()
         if add_to_tar == 'y' or add_to_tar == 'yes':
