@@ -513,6 +513,8 @@ def find_boundary_vertices(subject_filepath, hemi, label_name, boundary_type, ou
       pass
 #     for vertex in ras_coords:
       return np.array(boundary_vertex_num), np.array(boundary_coords)
+    
+
 
 def get_faces_for_label(faces, label_ind):
     """
@@ -531,7 +533,7 @@ def get_faces_for_label(faces, label_ind):
         for point_index in face:
             if point_index in label_ind:
                 all_label_faces.append(list(face))
-    return np.array(all_label_faces)
+    return np.unique(np.array(all_label_faces))
 
 
 

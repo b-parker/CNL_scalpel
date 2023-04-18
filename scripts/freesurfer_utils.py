@@ -59,6 +59,56 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
 
     sp.Popen(shlex.split(cmd))
 
+def freesurfer_label2vol(subjects_dir : str, label_name : str or list, annot_name: str, seg : str, temp : str, reg : str, subject: str, hemi : str, outfile_name : str):
+    """ 
+    Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
+
+    INPUT:
+    label_file : str = filepath to label file
+    annot_file : str = filepath to annot file
+    seg : str = filepath to segmentation file
+    temp : str = filepath to template file
+    reg : str = filepath to registration file
+    subject : str = subject id
+    hemi : str = hemisphere
+    outfile_name : str = filepath to output file
+
+    OUTPUT:
+    Creates a volume of the label as a binary mask
+    
+    """
+    ## Determine if label files or annot files exist
+    if isinstance(label_name, str):
+        label_file = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
+
+        label_for_cmd = ['--l', label_file] 
+        all_labels = ' '.join(label_for_cmd)
+        
+    if isinstance(label_name, list): 
+        label_files = [f"{subjects_dir}/{subject}/label/{hemi}.{label}.label" for label in label_name] 
+        for label_file in label_files:
+            assert Path(label_file).exists(), f"Label file does not exist: {label_file}"
+
+        label_for_cmd = [] 
+
+        for i, label in label_name:
+            label_for_cmd.append('--l')
+            label_for_cmd.append(label_files[i])
+            all_labels = ' '.join(label_for_cmd)
+
+    if isinstance(annot_name, str):
+        annot_file = f"{subjects_dir}/{subject}/label/{hemi}.{annot_name}.annot"
+        assert Path(annot_file).exists(), f"annot_file does not exist: {annot_file}" 
+    
+    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile}.nii.gz"
+
+    cmd = ['mri_label2vol',
+            all_labels,
+            '--seg', seg,
+            '--o', outfile,
+            ]
+  
+    
 
 
 def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
