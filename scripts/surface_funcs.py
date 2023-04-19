@@ -136,18 +136,6 @@ def dist_calc_matrix(surf, cortex, label_inds_all):
 
     return dist_mat
 
-def find_centroid(label_vertices):
-    """
-    Finds centroid position for a list of RAS vertices
-
-    returns list = [R, A, S]
-    """ 
-    centroid = []
-    for i in arange(3):
-        sum_verts = np.sum(label_vertices[i,:])
-        centroid_val = sum_verts / len(label_vertices)
-        centroid.append(centroid_val)
-    return centroid
 
 def getLabelIndices(sub,hemi,labels,cortex, subjects_dir):
     label_inds_all = []
