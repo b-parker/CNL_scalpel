@@ -7,7 +7,8 @@ from numpy.random import randint
 import json
 import numpy as np
 import tarfile
-
+from nibabel.freesurfer.io import read_geometry
+ 
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
     Runs freesurfer label2annot 
@@ -396,3 +397,67 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
             print(f'\nSubjects not added to {tarfile_name}.\n')
       
 
+def write_label(label_name : str, label_faces : np.array, verts : np.array, hemi : str, subject : str, subjects_dir : str, surface_type : str = 'white'):
+    """
+    Write a freesurfer label file 
+
+    INPUT:
+    label_name : str - name of label for save file
+    label_faces : np.array - array of faces for label
+    verts : np.array - array of all vertices in subject hemi; if None, will read in subject hemisphere from /surf/ file
+    hemi : str - hemisphere of label
+    subject : str - subject ID
+    subjects_dir : str - filepath to freesurfer subjects directory
+    surface_type : str - surface type for label (default = 'white')
+
+    OUTPUT:
+    writes label file to subject label directory
+    """
+    
+    assert os.path.exists(subjects_dir), f'{subjects_dir} does not exist'
+    subject_dir = f"{subjects_dir}/{subject}"
+    assert os.path.exists(subject_dir), f'{subject_dir} does not exist'
+
+
+    label_ind = np.unique(label_faces)
+    if verts is None:
+        hemi_surf = f"{subjects_dir}/{subject}/surf/{hemi}.{surface_type}"
+        verts, faces = read_geometry(hemi_surf)
+
+    label_verts = verts[label_ind]
+
+    label_filename = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
+
+    with open(label_filename, 'w') as f:
+        f.write(f"#!ascii label , from subject {subject} vox2ras=TkReg coords={surface_type} \n")
+        f.write(f"{len(label_ind)} \n")
+        for i, ind in enumerate(label_ind):
+            f.write(f"{ind} {np.round(label_verts[i][0], decimals=3)} {np.round(label_verts[i][1], decimals=3)} {np.round(label_verts[i][2], decimals=3)} 0.0000000000 \n")
+
+
+
+def read_label(label_name):
+    """
+    Reads a freesurfer-style .label file (5 columns)
+    
+    Parameters
+    ----------
+    label_name: str 
+    
+    Returns 
+    -------
+    vertices: index of the vertex in the label np.array [n_vertices] 
+    RAS_coords: columns are the X,Y,Z RAS coords associated with vertex number in the label, np.array [n_vertices, 3] 
+    
+    """
+    
+    # read label file, excluding first two lines of descriptor 
+    df_label = pd.read_csv(label_name,skiprows=[0,1],header=None,names=['vertex','x_ras','y_ras','z_ras','stat'],delimiter='\s+')
+    
+    vertices = np.array(df_label.vertex) 
+    RAS_coords = np.empty(shape = (vertices.shape[0], 3))
+    RAS_coords[:,0] = df_label.x_ras
+    RAS_coords[:,1] = df_label.y_ras
+    RAS_coords[:,2] = df_label.z_ras
+    
+    return vertices, RAS_coords
