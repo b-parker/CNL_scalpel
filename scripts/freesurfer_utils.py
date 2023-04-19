@@ -59,9 +59,11 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
 
     sp.Popen(shlex.split(cmd))
 
-def freesurfer_label2vol(subjects_dir : str, label_name : str or list, annot_name: str, seg : str, temp : str, reg : str, subject: str, hemi : str, outfile_name : str):
+def freesurfer_label2vol(subjects_dir : str, label_name : str or list, annot_name: str, seg : str, temp : str, subject: str, hemi : str, outfile_name : str):
     """ 
     Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
+
+    Defaults to run with registration to the same subject. This is coded as the --identity flag registering to the identity mat
 
     INPUT:
     label_file : str = filepath to label file
@@ -104,9 +106,16 @@ def freesurfer_label2vol(subjects_dir : str, label_name : str or list, annot_nam
 
     cmd = ['mri_label2vol',
             all_labels,
-            '--seg', seg,
+            '--temp', 'f.nii',
             '--o', outfile,
-            ]
+            '--subject', subject,
+            '--hemi', hemi,
+            '--identity']
+    
+    print(f'Calling: {cmd}')
+
+    sp.Popen(shlex.split(cmd))
+
   
     
 

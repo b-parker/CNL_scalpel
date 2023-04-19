@@ -516,7 +516,7 @@ def find_boundary_vertices(subject_filepath, hemi, label_name, boundary_type, ou
     
 
 
-def get_faces_for_label(faces, label_ind):
+def get_faces_from_vertex(faces, label_ind):
     """
     Takes a list of faces and label indices
     Returns the faces that contain the indices
@@ -534,6 +534,26 @@ def get_faces_for_label(faces, label_ind):
             if point_index in label_ind:
                 all_label_faces.append(list(face))
     return np.unique(np.array(all_label_faces))
+
+def get_boundary_faces(all_faces : np.array, label_ind : np.array):
+    """
+    For a given label, find the faces that are on the boundary of the label by finding vertices
+    that only appear twice in the array of faces (all interior vertices will appear 3 or more times)
+
+    INPUT:
+        all_faces : np.array - array of faces from the mesh
+        label_ind : np.array - array of vertices that are in the label, first column in freesurfer .label file
+    OUTPUT:
+        boundary_faces : np.array - array of faces that are on the boundary of the label
+    """
+    # Find the unique faces of a label
+    faces_in_label = get_faces_from_vertex(faces, label_ind)
+    unique_entry, count = np.unique(faces_in_label, return_counts=True)
+    # Get the nodes that only appear once
+    boundary_nodes = unique_entry[count <= 2]
+    # Get the faces that include the boundary nodes
+    boundary_faces = get_faces_from_vertex(faces, boundary_nodes)
+    return boundary_faces
 
 
 
