@@ -2,6 +2,7 @@
 from pathlib import Path
 import os, sys
 import subprocess as sp
+from functools import partial 
 
 # Data
 import pandas as pd
