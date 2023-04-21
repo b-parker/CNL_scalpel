@@ -29,6 +29,7 @@ from utility_funcs import mris_convert_command
 # Meshes
 import igl
 import meshplot 
+from freesurfer_utils import *
 
 
 
@@ -498,6 +499,7 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array):
                 all_label_faces.append(list(face))
     return np.array(all_label_faces)
 
+
 def get_boundary_faces(all_faces : np.array, label_ind : np.array):
     """
     For a given label, find the faces that are on the boundary of the label by finding vertices
@@ -510,13 +512,14 @@ def get_boundary_faces(all_faces : np.array, label_ind : np.array):
         boundary_faces : np.array - array of faces that are on the boundary of the label
     """
     # Find the unique faces of a label
-    faces_in_label = get_faces_from_vertices(faces, label_ind)
+    faces_in_label = get_faces_from_vertices(all_faces, label_ind)
     unique_entry, count = np.unique(faces_in_label, return_counts=True)
     # Get the nodes that only appear once
-    boundary_nodes = unique_entry[count <= 2]
+    boundary_nodes = unique_entry[count <= 6]
     # Get the faces that include the boundary nodes
-    boundary_faces = get_faces_from_vertices(faces, boundary_nodes)
+    boundary_faces = get_faces_from_vertices(all_faces, boundary_nodes)
     return boundary_faces
+
 
 
 
@@ -567,6 +570,75 @@ def adjacenct_nodes(adjacency_matrix : np.array, vertex : int):
     return adjacenct_vertices
 
 
+def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.array, label_verts : np.array, direction : str = 'anterior'):
+        """ 
+        Finds the first vertex on a graph inside of a boundary, according to a direction. 
+        i.e. 'anterior' will find the first anterior vertex inside the <vert> given
+
+        INPUT:
+        adjacency_matrix: np.array - adjacency matrix of a mesh provided by mesh_to_adjacency()
+        vert: int - index of vertex to find adjacent nodes
+        all_verts: np.array - array of all vertices in mesh
+        label_verts: np.array - array of vertices in boundary
+        direction: str - direction to search for first point inside boundary
+
+        OUTPUT:
+        first_vert_index: int - index of first vert inside boundary
+        """
+
+        ## Recursively check for first point anterior to boundary
+        adjacent_points = adjacenct_nodes(adjacency_matrix, vert)
+
+        if direction == 'anterior':
+            dir_idx = 1
+            dir_function = np.min
+        if direction == 'posterior':
+            dir_idx = 1
+            dir_function = np.max
+        if direction == 'inferior':
+            dir_idx = 2
+            dir_function = np.min
+        if direction == 'superior':
+            dir_idx = 2
+            dir_function = np.max                  
+        all_verts_in_direction = np.array([vert_i for vert_i in np.take(all_verts, adjacent_points, axis=0)[dir_idx]]).flatten()
+        first_point = dir_function(all_verts_in_direction)
+        if first_point in label_verts:
+            find_vert_inside(first_point)
+        else:
+            ## Base 
+            ### Return index and value
+            first_vert_index = np.where(all_verts[:, dir_idx] == first_point)[0][0] 
+            return first_vert_index 
+        
+  
+def find_edge_vert(label_verts : np.array, direction : str):
+     """
+     Finds the vertex on the boundary edge in a given direction
+
+        INPUT:
+        label_verts: np.array - array of vertices in boundary
+        direction: str - direction to search for first point inside boundary
+
+        OUTPUT:
+        first_vert_index: int - index of first vert inside boundary
+     """
+     if direction == 'anterior':
+            dir_idx = 1
+            dir_function = np.max
+     if direction == 'posterior':
+            dir_idx = 1
+            dir_function = np.min
+     if direction == 'inferior':
+        dir_idx = 2
+        dir_function = np.min
+     if direction == 'superior':
+        dir_idx = 2
+        dir_function = np.max
+     first_point = dir_function(label_verts[:, dir_idx])
+     first_vert_index = np.where(label_verts[:, dir_idx] == first_point)[0][0] 
+     return first_vert_index
+
 def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
     """
     For a list of boundary faces, start at the most posterior node (node 1)
@@ -578,35 +650,77 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
     INPUT:
     all_faces: np.array - array of faces in mesh
     all_points: np.array - array of points in mesh
-    boundary_faces: np.array - array of boundary faces
+    boundary_verts: np.array - array of boundary vertex indices
 
+    OUTPUT:
+    label_points: np.array - array of points in bounded area
 
     """
+    # Get all points in boundary
+    label_points = np.unique(boundary_faces)
 
-    ## add points in boundary faces to label_points 
-    label_points = boundary_faces.flatten().unique()
+    # Calculate adjacency matrix for traversal
+    adj_mat = mesh_to_adjacency(all_faces, all_points)
     
-    # find most posterior point in boundary
-    all_boundary_points = all_points[boundary_faces]
-    post_boundary_point_value = [points[1] for points in all_boundary_points].min()
-    post_boundary_point = all_points[np.where(all_points[1] == post_boundary_point_value)]
-
-    # get adjacent nodes to boundary
-    post_adjacent_nodes = adjacenct_nodes(post_boundary_point, all_faces)
-
-    # get the most anterior point in all nodes adjacent to the most posterior point
-    first_anterior_point = [point for point in np.take(points, post_adjacent_nodes, axis=0)[1]].flatten().min()
-
-    first_anterior_node = all_points[np.where(all_points[1] == first_anterior_point)]
+    # return the index of the most posterior point in the boundary (idx in all_points)
+    all_boundary_points = all_points[label_points]
+    boundary_index = find_edge_vert(all_boundary_points, 'posterior')
+            
+    first_anterior_vertex = find_vert_inside(adjacency_matrix=adj_mat,
+                                            vert=boundary_index,
+                                            all_verts=all_points,
+                                            label_verts=label_points,
+                                            direction='anterior')
 
     # breadth first search from first anterior point, treating boundary points as end of the graph
-    queue = [first_anterior_node]
+    queue = [first_anterior_vertex]
 
     while queue:
+        visited = label_points
         vertex = queue.pop(0)
         if vertex not in label_points:
-            label_points.append(vertex)
-            for adj in adjacenct_nodes(vertex):
-                if adj not in label_points:
+            ## Seems infinite
+            ## Not adding any points
+            np.append(label_points, vertex)
+            for adj in adjacenct_nodes(adj_mat, vertex):
+                if adj not in visited:
                     queue.append(adj)
+                    np.append(visited, adj)
+    
+    return label_points
 
+
+def main():
+
+    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
+    labels = ['POS','MCGS']
+    sub = '100307'
+    hemi = 'rh'
+    outdir = '/Users/benparker/Desktop/cnl/CNL_scalpel/results'
+
+    #getDistMatrix(subjects_dir,labels,sub,hemi,outdir, fmri_prep=False)
+
+    highres_surface = f'{subjects_dir}/{sub}/surf/{hemi}.pial'
+        
+    
+    giidata = nb.freesurfer.read_geometry(highres_surface)
+    points, faces = giidata[0], giidata[1]
+
+    ### Do not use nibabel to read_labels because only returns vertices, not coordinates
+    DONT_label_ind = nb.freesurfer.read_label('/Users/benparker/Desktop/cnl/subjects/100307/label/rh.POS.label')
+
+
+    label_ind, label_RAS = read_label('/Users/benparker/Desktop/cnl/subjects/100307/label/rh.POS.label')
+
+
+    pos_boundary = get_boundary_faces(faces, label_ind)
+    label_points = points[np.unique(pos_boundary)]
+    min_val = np.min(label_points[:,1])
+    np.where(points[:,1] == min_val)[0][0]
+
+    adj_mat = mesh_to_adjacency(faces, points)
+
+    label_points = get_vertices_in_bounded_area(faces, points, pos_boundary)
+
+if __name__ == "__main__":
+    main()

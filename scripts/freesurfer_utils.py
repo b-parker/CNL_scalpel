@@ -8,6 +8,7 @@ import json
 import numpy as np
 import tarfile
 from nibabel.freesurfer.io import read_geometry
+import pandas as pd
  
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
