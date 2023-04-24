@@ -68,8 +68,8 @@ def freesurfer_label2vol(subjects_dir : str, label_name : str or list, annot_nam
     Defaults to run with registration to the same subject. This is coded as the --identity flag registering to the identity mat
 
     INPUT:
-    label_file : str = filepath to label file
-    annot_file : str = filepath to annot file
+    label_file : str = filepath to label file (do not include .label)
+    annot_file : str = filepath to annot file (do not include .annot)
     seg : str = filepath to segmentation file
     temp : str = filepath to template file
     reg : str = filepath to registration file
