@@ -80,37 +80,55 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
     
     """
     ## Determine if label files or annot files exist
-    if isinstance(label_name, str):
-        label_file = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
+    if 'label_name' in kwargs:
+        if isinstance(kwargs['label_name'], str):
+            label_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['label_name']}.label"
 
-        label_for_cmd = ['--l', label_file] 
-        all_labels = ' '.join(label_for_cmd)
-        
-    if isinstance(label_name, list): 
-        label_files = [f"{subjects_dir}/{subject}/label/{hemi}.{label}.label" for label in label_name] 
-        for label_file in label_files:
-            assert Path(label_file).exists(), f"Label file does not exist: {label_file}"
+            label_for_cmd = ['--l', label_file] 
+            all_labels = ' '.join(label_for_cmd)
+            
+        if isinstance(kwargs['label_name'], list): 
+            label_files = [f"{subjects_dir}/{subject}/label/{hemi}.{label}.label" for label in kwargs['label_name']] 
+            for label_file in label_files:
+                assert Path(label_file).exists(), f"Label file does not exist: {label_file}"
 
-        label_for_cmd = [] 
+            label_for_cmd = [] 
 
-        for i, label in label_name:
-            label_for_cmd.append('--l')
-            label_for_cmd.append(label_files[i])
+            for i, label in kwargs['label_name']:
+                label_for_cmd.append('--l')
+                label_for_cmd.append(label_files[i])
+                all_labels = ' '.join(label_for_cmd)
+
+
+    if 'annot_name' in kwargs:
+        if isinstance(kwargs['annot_name'], str):
+            annot_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['annot_name']}.annot"
+            assert Path(annot_file).exists(), f"annot_file does not exist: {annot_file}" 
+
+            label_for_cmd = ['--annot', annot_file] 
             all_labels = ' '.join(label_for_cmd)
 
-    if isinstance(annot_name, str):
-        annot_file = f"{subjects_dir}/{subject}/label/{hemi}.{annot_name}.annot"
-        assert Path(annot_file).exists(), f"annot_file does not exist: {annot_file}" 
-    
-    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile}.nii.gz"
+        if isinstance(kwargs['annot_name'], list):
+            annot_files = [f"{subjects_dir}/{subject}/label/{hemi}.{annot}.label" for annot in kwargs['annot_name']] 
+            for annot_file in annot_files:
+                assert Path(annot_file).exists(), f"Annot file does not exist: {annot_file}"
 
-    cmd = ['mri_label2vol',
-            all_labels,
-            '--temp', 'f.nii',
-            '--o', outfile,
-            '--subject', subject,
-            '--hemi', hemi,
-            '--identity']
+            label_for_cmd = [] 
+
+            for i, annot in kwargs['annot_name']:
+                label_for_cmd.append('--annot')
+                label_for_cmd.append(annot_files[i])
+                all_labels = ' '.join(label_for_cmd)
+
+    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{kwargs['outfile_name']}.nii.gz"
+    os.chdir(f"{subjects_dir}/{subject}/mri/")
+    cmd = f"mri_label2vol \
+            --temp f.nii \
+            --o {outfile} \
+            --subject {subject}\
+            --hemi {hemi} \
+            --identity \
+            {all_labels} "
     
     print(f'Calling: {cmd}')
 
