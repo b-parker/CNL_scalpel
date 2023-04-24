@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import subprocess as sp
 import shlex
+
 import datetime
 from numpy.random import randint
 import json
@@ -48,7 +49,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
     all_labels = ' '.join(label_for_cmd)
 
     ## Generate and run command 
-    
+    my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
 
     cmd = f"mris_label2annot \
         --s {subject_id} \
@@ -59,7 +60,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
     
     print(f'Calling: {cmd}')
 
-    sp.Popen(shlex.split(cmd))
+    sp.Popen(shlex.split(cmd), env=my_env).wait()
 
 def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwargs):
     """ 
@@ -121,9 +122,11 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
                 all_labels = ' '.join(label_for_cmd)
 
     outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{kwargs['outfile_name']}.nii.gz"
-    os.chdir(f"{subjects_dir}/{subject}/mri/")
+
+    os.chdir(f"{subjects_dir}/{subject}")
+    my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
     cmd = f"mri_label2vol \
-            --temp f.nii \
+            --temp ./mri/orig.mgz \
             --o {outfile} \
             --subject {subject}\
             --hemi {hemi} \
@@ -132,9 +135,8 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
     
     print(f'Calling: {cmd}')
 
-    sp.Popen(shlex.split(cmd))
+    sp.Popen(shlex.split(cmd), env = my_env).wait()
 
-  
     
 
 
