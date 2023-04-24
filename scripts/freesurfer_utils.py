@@ -71,8 +71,8 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
     subjects_dir : str = filepath to freesurfer subjects dir
     subject : str = freesurfer subject ID
     hemi : str = hemisphere 
-    label_name : str = filepath to label file (do not include .label)
-    annot_name : str = filepath to annot file (do not include .annot)
+    label_file : str = filepath to label file (do not include .label)
+    annot_file : str = filepath to annot file (do not include .annot)
     outfile : str = outfile name (do not include .nii.gz)
 
     OUTPUT:
