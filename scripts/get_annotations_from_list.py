@@ -1,4 +1,4 @@
-import src.freesurfer_utils
+import src.freesurfer_utils as fsu
 import json
 import os
 
@@ -7,12 +7,12 @@ def main():
 
     subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt"
 
-    subject_list = freesurfer_utils.get_subjects_list(subjects_list=subjects_list_path,
+    subject_list = fsu.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
     project_dir='/home/weiner/HCP/projects/WillbrandMaboudian_CommBio_2023/annot_ctab_json/'
 
-    annotation_name = 'PFC_OFC_LPC_VTC_PMC'
+    annotation_name = 'PFC_LPC_PMC'
     
     sulci_list = ['MCGS',
                     'POS',
@@ -28,25 +28,62 @@ def main():
                     'pmcgs',
                     'sspls_v',
                     'prculs_v',
-                    'isms'   ]
+                    'isms'   ,
+                    'central',
+                    'sprs',
+                    'iprs', 
+                    'sfs_a', 
+                    'sfs_p', 
+                    'pmfs_p', 
+                    'pmfs_i', 
+                    'pmfs_a', 
+                    'ifs', 
+                    'infs_h', 
+                    'infs_v',
+                    'painfs_d', 
+                    'painfs_v',
+                    'ds', 
+                    'aalf', 
+                    'half', 
+                    'ts', 
+                    'prts', 
+                    'lfms',
+                    'IPS', 
+                    'IPS-PO', 
+                    'SPS', 
+                    'aipsJ', 
+                    'sB', 
+                    'pips', 
+                    'iTOS', 
+                    'mTOS', 
+                    'SmgS', 
+                    'STS', 
+                    'cSTS1', 
+                    'cSTS2', 
+                    'cSTS3',
+                    'SLOS', 
+                    'SLOS2', 
+                    'SLOS3', 
+                    'SLOS4'
+                    ]
  
     ## Create color table
 
-    sulci_colors = {'MCGS': '99 180 193' ,
-                    'POS': '128 127 184',
-                    'prculs': '159  157 200',
-                    'prcus_p': '83  151 62',
-                    'prcus_i': '150 83 89',
-                    'prcus_a': '190 225 149', 
-                    'spls': '134 190 125', 
-                    'ifrms': '221 75 57',
-                    'sps': '0   66  145',
-                    'sspls_d': '159 246 77', 
-                    'icgs_p': '174 243 254',
-                    'pmcgs': '204 157 66',
-                    'sspls_v': '255 118 32',
-                    'prculs_v': '255 118 104',
-                    'isms': '33 224 104'}
+    # sulci_colors = {'MCGS': '99 180 193' ,
+    #                 'POS': '128 127 184',
+    #                 'prculs': '159  157 200',
+    #                 'prcus_p': '83  151 62',
+    #                 'prcus_i': '150 83 89',
+    #                 'prcus_a': '190 225 149', 
+    #                 'spls': '134 190 125', 
+    #                 'ifrms': '221 75 57',
+    #                 'sps': '0   66  145',
+    #                 'sspls_d': '159 246 77', 
+    #                 'icgs_p': '174 243 254',
+    #                 'pmcgs': '204 157 66',
+    #                 'sspls_v': '255 118 32',
+    #                 'prculs_v': '255 118 104',
+    #                 'isms': '33 224 104'}
     
     # Save color table as json in <project directory> with colors_<annotation_name>.json as filename
     #freesurfer_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
@@ -54,16 +91,16 @@ def main():
 
     ### Full process
     # sort subject hemispheres by present sulci, stores in dictionary
-    sorted_sulci_dict = freesurfer_utils.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
+    sorted_sulci_dict = fsu.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
 
     # Create json in <project directory> with <annotation_name>.json as filename
 
-    freesurfer_utils.dict_to_JSON(dictionary=sorted_sulci_dict, outdir=project_dir, project_name=annotation_name)
+    fsu.dict_to_JSON(dictionary=sorted_sulci_dict, outdir=project_dir, project_name=annotation_name)
 
     json_filename = f"{project_dir}/{annotation_name}.json"
 
     # Create colortables from that dictionary; store in <project_dir>
-    freesurfer_utils.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename,sulci_list=sulci_list)
+    fsu.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename,sulci_list=sulci_list)
 
     with open(json_filename) as file:
         sulci_dict = json.load(file)
@@ -76,7 +113,7 @@ def main():
             ctab_sulci = '_'.join(sulcus_list)
             ctab_path = f"{project_dir}/{ctab_sulci}.ctab"
 
-            freesurfer_utils.freesurfer_label2annot(subjects_dir,
+            fsu.freesurfer_label2annot(subjects_dir,
                                    subject_path, 
                                    label_list=sulcus_list,
                                    hemi=hemi,

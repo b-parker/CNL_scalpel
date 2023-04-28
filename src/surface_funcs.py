@@ -688,39 +688,3 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
                     np.append(visited, adj)
     
     return label_points
-
-
-def main():
-
-    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
-    labels = ['POS','MCGS']
-    sub = '100307'
-    hemi = 'rh'
-    outdir = '/Users/benparker/Desktop/cnl/CNL_scalpel/results'
-
-    #getDistMatrix(subjects_dir,labels,sub,hemi,outdir, fmri_prep=False)
-
-    highres_surface = f'{subjects_dir}/{sub}/surf/{hemi}.pial'
-        
-    
-    giidata = nb.freesurfer.read_geometry(highres_surface)
-    points, faces = giidata[0], giidata[1]
-
-    ### Do not use nibabel to read_labels because only returns vertices, not coordinates
-    DONT_label_ind = nb.freesurfer.read_label('/Users/benparker/Desktop/cnl/subjects/100307/label/rh.POS.label')
-
-
-    label_ind, label_RAS = read_label('/Users/benparker/Desktop/cnl/subjects/100307/label/rh.POS.label')
-
-
-    pos_boundary = get_boundary_faces(faces, label_ind)
-    label_points = points[np.unique(pos_boundary)]
-    min_val = np.min(label_points[:,1])
-    np.where(points[:,1] == min_val)[0][0]
-
-    adj_mat = mesh_to_adjacency(faces, points)
-
-    label_points = get_vertices_in_bounded_area(faces, points, pos_boundary)
-
-if __name__ == "__main__":
-    main()
