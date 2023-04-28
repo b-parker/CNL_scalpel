@@ -81,6 +81,8 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
     
     """
     ## Determine if label files or annot files exist
+    
+    
     if 'label_name' in kwargs:
         if isinstance(kwargs['label_name'], str):
             label_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['label_name']}.label"
@@ -122,8 +124,8 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
                 all_labels = ' '.join(label_for_cmd)
 
     outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{kwargs['outfile_name']}.nii.gz"
-
     os.chdir(f"{subjects_dir}/{subject}")
+
     my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
     cmd = f"mri_label2vol \
             --temp ./mri/orig.mgz \
@@ -394,6 +396,7 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     
     assert os.path.exists(project_dir), "{project_dir} does not exist"
 
+    
     # Check if tar exists
     try:
         with tarfile.open(f"{project_dir}/{tarfile_name}.tar.gz", mode='x:gz') as tar:

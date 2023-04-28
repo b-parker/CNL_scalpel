@@ -1,4 +1,4 @@
-import freesurfer_utils
+import src.freesurfer_utils
 import json
 import os
 
@@ -12,7 +12,7 @@ def main():
     
     project_dir='/home/weiner/HCP/projects/WillbrandMaboudian_CommBio_2023/annot_ctab_json/'
 
-    annotation_name = 'WillbrandMaboudian_CommBio_2023'
+    annotation_name = 'PFC_OFC_LPC_VTC_PMC'
     
     sulci_list = ['MCGS',
                     'POS',
@@ -28,7 +28,7 @@ def main():
                     'pmcgs',
                     'sspls_v',
                     'prculs_v',
-                    'isms']
+                    'isms'   ]
  
     ## Create color table
 
