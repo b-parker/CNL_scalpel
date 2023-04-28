@@ -289,10 +289,17 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
 
     for unique_sulci_list in unique_sulci_lists:
         ctab_name = '-'.join(unique_sulci_list)
-        print(f"Creating color table for {ctab_name}")
-        create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
-                               outdir=project_colortable_dir, palette=palette)
+        if len(ctab_name) < 250:
+            print(f"Creating color table for {ctab_name}")
+            create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
+                                outdir=project_colortable_dir, palette=palette)
         
+        else:
+            ctab_name = ''.join([sulc[:2] for sulc in unique_sulci_list])
+            print(f"Creating color table for compressed ctab -  {ctab_name}")
+            create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
+                                outdir=project_colortable_dir, palette=palette)
+
         
 
 def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
