@@ -256,7 +256,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
 
     
 
-def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_file: str, palette: dict = None):
+def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_file: str, project_name : str, palette: dict = None):
     ''' 
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
@@ -266,6 +266,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     json_file : str - filepath to json file containing subject sulci dictionary
     sulci_list : list - list of all possible sulci
     palette : dict - custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
+    project_name : str - unique identifier for project 
     '''
     print(json_file)
     with open(json_file) as file:
@@ -285,21 +286,23 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
         
         assert len(palette.keys()) == len(sulci_list), f"Palette length does not match label list length"
 
+    # store unique comnbinations of sulci in dictionary, with key by indexed combination number
+    ctab_file_dict = {}
 
-
-    for unique_sulci_list in unique_sulci_lists:
-        ctab_name = '-'.join(unique_sulci_list)
-        if len(ctab_name) < 250:
-            print(f"Creating color table for {ctab_name}")
-            create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
-                                outdir=project_colortable_dir, palette=palette)
+    # this is done to avoid file length limitations when having all sulci in filename (linux=255 bytes)
+    # match subject hemi entry to value in the ctab_file_dict
+    
+    for i, unique_sulci_list in enumerate(unique_sulci_lists):
+         num_sulci = len(unique_sulci_list)
+         ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
+         ctab_file_dict[ctab_name] = unique_sulci_list
+    
+    dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
+    
+    for key in ctab_file_dict.keys():
+        create_freesurfer_ctab(ctab_name=key, label_list=ctab_file_dict[key],
+                            outdir=project_colortable_dir, palette=palette)
         
-        else:
-            ctab_name = ''.join([sulc[:2] for sulc in unique_sulci_list])
-            print(f"Creating color table for compressed ctab -  {ctab_name}")
-            create_freesurfer_ctab(ctab_name=ctab_name, label_list=sulci_list,
-                                outdir=project_colortable_dir, palette=palette)
-
         
 
 def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
@@ -313,6 +316,7 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
     '''
+
     assert os.path.exists(outdir), f"{outdir} does not exist"
     
     save_file = os.path.join(outdir, f"{project_name}.json")

@@ -110,7 +110,7 @@ def main():
         subject = os.path.basename(subject_path)
         for hemi in ['lh', 'rh']:
             sulcus_list = sulci_dict[f"{hemi}_{subject}"]
-            ctab_sulci = '_'.join(sulcus_list)
+            ctab_sulci = '-'.join(sulcus_list)
             ctab_path = f"{project_dir}/{ctab_sulci}.ctab"
 
             fsu.freesurfer_label2annot(subjects_dir,
