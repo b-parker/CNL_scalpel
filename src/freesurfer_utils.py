@@ -292,7 +292,8 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     # this is done to avoid file length limitations when having all sulci in filename (linux=255 bytes)
     # match subject hemi entry to value in the ctab_file_dict
 
-    for i, unique_sulci_list in enumerate(unique_sulci_lists):
+    for i, unique_sulci_list in enumerate(unique_sulci_lists[:3]):
+         print(unique_sulci_list)
          num_sulci = len(unique_sulci_list)
          ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
          ctab_file_dict[ctab_name] = unique_sulci_list

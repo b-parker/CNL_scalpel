@@ -10,7 +10,7 @@ def main():
     subject_list = fsu.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
-    project_dir='/home/weiner/HCP/projects/WillbrandMaboudian_CommBio_2023/annot_ctab_json/'
+    project_dir='/home/weiner/HCP/projects/CNL_scalpel/annot_ctab_json/'
 
     annotation_name = 'PFC_LPC_PMC'
     
