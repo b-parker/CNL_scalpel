@@ -66,7 +66,6 @@ def main():
                     'SLOS3', 
                     'SLOS4'
                     ]
- 
     ## Create color table
 
     # sulci_colors = {'MCGS': '99 180 193' ,
@@ -125,7 +124,7 @@ def main():
             sulcus_list = sulci_dict[f"{hemi}_{subject}"]
             for key, value in ctab_dict.items():
                 if value == sulcus_list:
-                    ctab_path = f"{key}.json"
+                    ctab_path = f"{project_dir}/{key}.ctab"
 
             fsu.freesurfer_label2annot(subjects_dir,
                                    subject_path, 

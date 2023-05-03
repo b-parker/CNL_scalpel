@@ -299,9 +299,11 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     
     dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
     
-    for key in ctab_file_dict.keys():
-        create_freesurfer_ctab(ctab_name=key, label_list=sulci_list,
-                            outdir=project_colortable_dir, palette=palette)
+    # Get custom palette for each sulcus
+    for key, value in ctab_file_dict.items():
+        custom_palette = dict((val, palette[val]) for val in value)
+        create_freesurfer_ctab(ctab_name=key, label_list=value,
+                            outdir=project_colortable_dir, palette=custom_palette)
         
         
 
