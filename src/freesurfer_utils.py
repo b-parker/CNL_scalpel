@@ -239,13 +239,13 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     outdir_path = Path(outdir)
     assert outdir_path.exists(), f"{outdir.resolve()} does not exist"
 
-    ctab_path = ''.join([outdir, ctab_name, '.ctab'])
+    ctab_path = f"{outdir}/{ctab_name}.ctab"
     date = datetime.datetime.now()
 
     if palette == None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
-        assert len(palette) == len(label_list), f"Palette length does not match label list length"
+        pass
 
     with open(ctab_path, 'w') as file:
         file.write(f'#$Id: {ctab_path}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
@@ -300,6 +300,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
     
     for key in ctab_file_dict.keys():
+        print(key)
         create_freesurfer_ctab(ctab_name=key, label_list=ctab_file_dict[key],
                             outdir=project_colortable_dir, palette=palette)
         
