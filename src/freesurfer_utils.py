@@ -165,7 +165,7 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
         assert os.path.exists(subject_filepath), f"{subject} does not exist within SUBJECTS_DIR {subjects_dir}"
 
         subject_filepaths.append(subject_filepath)
-
+    
     return subject_filepaths
     
 
@@ -239,7 +239,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     outdir_path = Path(outdir)
     assert outdir_path.exists(), f"{outdir.resolve()} does not exist"
 
-    ctab_path = ''.join([outdir, ctab_name, '.ctab'])
+    ctab_path = f"{outdir}/{ctab_name}.ctab"
     date = datetime.datetime.now()
 
     if palette == None:        
@@ -292,8 +292,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     # this is done to avoid file length limitations when having all sulci in filename (linux=255 bytes)
     # match subject hemi entry to value in the ctab_file_dict
 
-    for i, unique_sulci_list in enumerate(unique_sulci_lists[:3]):
-         print(unique_sulci_list)
+    for i, unique_sulci_list in enumerate(unique_sulci_lists):
          num_sulci = len(unique_sulci_list)
          ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
          ctab_file_dict[ctab_name] = unique_sulci_list
@@ -316,7 +315,7 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
     '''
-
+    print(outdir)
     assert os.path.exists(outdir), f"{outdir} does not exist"
     
     save_file = os.path.join(outdir, f"{project_name}.json")

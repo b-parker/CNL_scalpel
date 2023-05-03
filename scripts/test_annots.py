@@ -3,16 +3,16 @@ import json
 import os
 
 def main():
-    subjects_dir = '/home/weiner/HCP/subjects'
+    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
 
-    subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt"
+    subjects_list_path = f"{subjects_dir}/subjects_list.txt"
 
     subject_list = fsu.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
-    project_dir='/home/weiner/HCP/projects/CNL_scalpel/annot_ctab_json/'
+    project_dir= f"{subjects_dir}/annot_ctab_json"
 
-    annotation_name = 'PFC_LPC_PMC'
+    annotation_name = 'test_annot'
     
     sulci_list = ['MCGS',
                     'POS',
@@ -66,7 +66,8 @@ def main():
                     'SLOS3', 
                     'SLOS4'
                     ]
- 
+    
+
     ## Create color table
 
     # sulci_colors = {'MCGS': '99 180 193' ,
@@ -125,7 +126,7 @@ def main():
             sulcus_list = sulci_dict[f"{hemi}_{subject}"]
             for key, value in ctab_dict.items():
                 if value == sulcus_list:
-                    ctab_path = f"{key}.json"
+                    ctab_path = f"{project_dir}/{key}.ctab"
 
             fsu.freesurfer_label2annot(subjects_dir,
                                    subject_path, 
