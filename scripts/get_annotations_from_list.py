@@ -89,6 +89,14 @@ def main():
     #freesurfer_utils.dict_to_JSON(dictionary=sulci_colors, outdir=project_dir, project_name=f"colors_{annotation_name}")
 
 
+    ### IDEAS
+    ## - Record the string of all unique sulci in a dictionary, key Unique File Id value exact sulci
+    ## - Store a filename as the last elements / other list item in the hemi_subject json
+    ## 
+    ##
+    ##
+    ##
+
     ### Full process
     # sort subject hemispheres by present sulci, stores in dictionary
     sorted_sulci_dict = fsu.sort_subjects_and_sulci(subject_list, sulci_list=sulci_list)
@@ -100,7 +108,7 @@ def main():
     json_filename = f"{project_dir}/{annotation_name}.json"
 
     # Create colortables from that dictionary; store in <project_dir>
-    fsu.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename,sulci_list=sulci_list)
+    fsu.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=json_filename,sulci_list=sulci_list, project_name=annotation_name)
 
     with open(json_filename) as file:
         sulci_dict = json.load(file)

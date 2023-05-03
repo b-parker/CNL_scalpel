@@ -291,7 +291,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
 
     # this is done to avoid file length limitations when having all sulci in filename (linux=255 bytes)
     # match subject hemi entry to value in the ctab_file_dict
-    
+
     for i, unique_sulci_list in enumerate(unique_sulci_lists):
          num_sulci = len(unique_sulci_list)
          ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
@@ -300,18 +300,17 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
     
     for key in ctab_file_dict.keys():
-        create_freesurfer_ctab(ctab_name=key, label_list=ctab_file_dict[key],
+        create_freesurfer_ctab(ctab_name=key, label_list=sulci_list,
                             outdir=project_colortable_dir, palette=palette)
         
         
 
 def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     '''
-    Takes a list of subjects for a project and their respective sulcal presence
-    and saves them to JSON file
+    Takes a dictionary and saves as a JSON
 
     INPUT:
-    subject_sulci_dict : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
+    dictionary : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
     outdir : str - write directory for json of colortables
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
