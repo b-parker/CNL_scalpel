@@ -165,7 +165,7 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
         assert os.path.exists(subject_filepath), f"{subject} does not exist within SUBJECTS_DIR {subjects_dir}"
 
         subject_filepaths.append(subject_filepath)
-
+    
     return subject_filepaths
     
 
@@ -291,7 +291,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
 
     # this is done to avoid file length limitations when having all sulci in filename (linux=255 bytes)
     # match subject hemi entry to value in the ctab_file_dict
-    
+
     for i, unique_sulci_list in enumerate(unique_sulci_lists):
          num_sulci = len(unique_sulci_list)
          ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
@@ -299,25 +299,28 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     
     dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
     
-    for key in ctab_file_dict.keys():
-        print(key)
-        create_freesurfer_ctab(ctab_name=key, label_list=ctab_file_dict[key],
-                            outdir=project_colortable_dir, palette=palette)
+
+
+    # Get custom palette for each sulcus
+    for key, value in ctab_file_dict.items():
+        custom_palette = dict((val, palette[val]) for val in value)
+        create_freesurfer_ctab(ctab_name=key, label_list=value,
+                            outdir=project_colortable_dir, palette=custom_palette)
+
         
         
 
 def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     '''
-    Takes a list of subjects for a project and their respective sulcal presence
-    and saves them to JSON file
+    Takes a dictionary and saves as a JSON
 
     INPUT:
-    subject_sulci_dict : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
+    dictionary : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
     outdir : str - write directory for json of colortables
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
     '''
-
+    print(outdir)
     assert os.path.exists(outdir), f"{outdir} does not exist"
     
     save_file = os.path.join(outdir, f"{project_name}.json")

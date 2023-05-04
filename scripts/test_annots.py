@@ -3,20 +3,16 @@ import json
 import os
 
 def main():
-    subjects_dir = '/home/weiner/HCP/subjects'
+    subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
 
-    subjects_list_path = "/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt"
+    subjects_list_path = f"{subjects_dir}/subjects_list.txt"
 
     subject_list = fsu.get_subjects_list(subjects_list=subjects_list_path,
                                      subjects_dir=subjects_dir)
     
+    project_dir= f"{subjects_dir}/annot_ctab_json"
 
-
-
-    project_dir='/home/weiner/HCP/projects/CNL_scalpel/annot_ctab_json/'
-
-
-    annotation_name = 'PFC_LPC_PMC'
+    annotation_name = 'test_annot'
     
     sulci_list = ['MCGS',
                     'POS',
@@ -70,6 +66,8 @@ def main():
                     'SLOS3', 
                     'SLOS4'
                     ]
+    
+
     ## Create color table
 
     # sulci_colors = {'MCGS': '99 180 193' ,
@@ -109,48 +107,26 @@ def main():
     fsu.dict_to_JSON(dictionary=sorted_sulci_dict, outdir=project_dir, project_name=annotation_name)
 
     sulci_json_filename = f"{project_dir}/{annotation_name}.json"
-<<<<<<< HEAD
-    ctab_json_filename = f"{project_dir}/{annotation_name}_ctab_files.json"
-=======
 
     ctab_json_filename = f"{project_dir}/{annotation_name}_ctab_files.json"
 
->>>>>>> e5eb96a69d62dffb2bb887ad58c965c9d12c37a5
     # Create colortables from that dictionary; store in <project_dir>
     fsu.create_ctabs_from_dict(project_colortable_dir=project_dir, json_file=sulci_json_filename,sulci_list=sulci_list, project_name=annotation_name)
 
     with open(sulci_json_filename) as file:
         sulci_dict = json.load(file)
-<<<<<<< HEAD
-=======
 
     with open(ctab_json_filename) as file:
         ctab_dict = json.load(file)
     
->>>>>>> e5eb96a69d62dffb2bb887ad58c965c9d12c37a5
 
-    with open(ctab_json_filename) as file:
-        ctab_dict = json.load(file)
-
-    
-        ## Edit filepath to reference the newly created ctab dictionary
     for subject_path in subject_list:
         subject = os.path.basename(subject_path)
         for hemi in ['lh', 'rh']:
             sulcus_list = sulci_dict[f"{hemi}_{subject}"]
-<<<<<<< HEAD
-            ## match unique sulcus list for subject hemi to color table name
-            for ctab_key, ctab_value in ctab_dict.items():
-                if sulcus_list == ctab_value:
-                    ctab_filename = ctab_key
-                    ctab_path = f"{project_dir}/{ctab_filename}.ctab"
-                    break
-            
-=======
             for key, value in ctab_dict.items():
                 if value == sulcus_list:
                     ctab_path = f"{project_dir}/{key}.ctab"
->>>>>>> e5eb96a69d62dffb2bb887ad58c965c9d12c37a5
 
             fsu.freesurfer_label2annot(subjects_dir,
                                    subject_path, 
