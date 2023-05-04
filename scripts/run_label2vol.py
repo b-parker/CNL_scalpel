@@ -1,9 +1,9 @@
 import src.freesurfer_utils as fsu
-
+import os
 def main():
     subjects_dir = "/home/weiner/HCP/subjects"
     annot_name = "PFC_LPC_PMC"
-    subjects_list = get_subjects_list(subjects_dir = subjects_dir, subjects_list="/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt")
+    subjects_list = fsu.get_subjects_list(subjects_dir = subjects_dir, subjects_list="/home/weiner/HCP/subject_lists/HCP_processed_subs_all.txt")
     hemis = ['lh', 'rh']
     outfile_name = annot_name
 
