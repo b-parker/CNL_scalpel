@@ -429,6 +429,51 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
                 tar.add(subject_dir, recursive=True)
         else: 
             print(f'\nSubjects not added to {tarfile_name}.\n')
+
+
+def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, subject_list: str, subjects_dir: str, filepath_from_subject_dir : str): 
+    """
+    Creates a compressed .tar.gz file from a list of subjects recursively. 
+        NOTE: This will add ALL files located in freesurfer subject directory
+    INPUT:
+    project_dir : str - filepath to project directory where tar will be written
+    tarfile_name : str - name for tar archive
+    subject_list : str - filepath to .txt list of subjects
+    subjects_dir : str - filepath freesurfer subjects directory
+
+
+    """
+    # Get subject list
+    subject_list = get_subjects_list(subjects_dir=subjects_dir, subjects_list=subject_list)
+    
+    # check suffix and remove
+    if tarfile_name[-7:] == '.tar.gz':
+        tarfile_name = tarfile_name[:-7]
+    
+    assert os.path.exists(project_dir), "{project_dir} does not exist"
+
+    
+    # Check if tar exists
+    try:
+        with tarfile.open(f"{project_dir}/{tarfile_name}.tar.gz", mode='x:gz') as tar:
+            print(f'Creating {tarfile_name} \n')
+            for subject_dir in subject_list:
+                
+                tar.add(f"{subject_dir}/{filepath_from_subject_dir}")
+            print('tarfile created.')
+    except FileExistsError:
+        # if tar exists, confirm user wants to add new subjects to tar
+        print(f'\n {tarfile_name}.tar.gz already exists. \n')
+
+        add_to_tar = input('Do you want to add the subjects to this existing tarfile? [y/n] ').lower()
+        if add_to_tar in ['y', 'yes']:
+         print('\nAdding\n')
+        
+         with tarfile.open(f"{project_dir}{tarfile_name}.tar.gz", mode='w:gz') as tar:
+            for subject_dir in subject_list:
+                tar.add(f"{subject_dir}/{filepath_from_subject_dir}")
+        else: 
+            print(f'\nSubjects not added to {tarfile_name}.\n')
       
 
 def write_label(label_name : str, label_faces : np.array, verts : np.array, hemi : str, subject : str, subjects_dir : str, surface_type : str = 'white'):
