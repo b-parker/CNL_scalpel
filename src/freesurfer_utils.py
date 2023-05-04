@@ -1,17 +1,18 @@
+""" System imports """
 from pathlib import Path
 import os
 import subprocess as sp
 import shlex
-
+import tarfile
+import json
 import datetime
 from numpy.random import randint
-import json
 import numpy as np
-import tarfile
 from nibabel.freesurfer.io import read_geometry
 import pandas as pd
- 
-def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: list, hemi: str, ctab_path: str, annot_name: str):
+
+def freesurfer_label2annot(subjects_dir: str, subject_path: str, 
+                           label_list: list, hemi: str, ctab_path: str, annot_name: str):
     '''
     Runs freesurfer label2annot 
 
@@ -34,9 +35,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str, label_list: lis
 
     os.environ['SUBJECTS_DIR'] = subjects_dir
     ctab_path = Path(ctab_path)
-
     ## Sort labels into strings 
-
     label_for_cmd = []
 
     for label in label_list:
@@ -154,7 +153,7 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     subjects_filepaths: list: list of subject filepaths as strings
     '''
     
-    with open(subjects_list) as list_file:
+    with open(subjects_list, 'r', encoding="utf-8") as list_file:
         subject_names = [line.rstrip() for line in list_file]
 
     subject_filepaths = []
@@ -242,15 +241,15 @@ def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette
     ctab_path = f"{outdir}/{ctab_name}.ctab"
     date = datetime.datetime.now()
 
-    if palette == None:        
+    if palette is None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in label_list}
     else:
         pass
 
-    with open(ctab_path, 'w') as file:
+    with open(ctab_path, 'w', encoding="utf-8") as file:
         file.write(f'#$Id: {ctab_path}, v 1.38.2.1 {date.strftime("%y/%m/%d")} {date.hour}:{date.minute}:{date.second} CNL Exp $ \n')
-        file.write(f"No. Label Name:                R   G   B   A\n")
-        file.write(f"0  Unknown         0   0   0   0\n")
+        file.write("No. Label Name:                R   G   B   A\n")
+        file.write("0  Unknown         0   0   0   0\n")
         for i, label_name in enumerate(label_list):
             file.write(f"{i + 1}    {label_name}                {palette[label_name]}  0\n")
 
@@ -269,7 +268,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     project_name : str - unique identifier for project 
     '''
     print(json_file)
-    with open(json_file) as file:
+    with open(json_file, 'r', encoding="utf-8") as file:
         sulci_dict = json.load(file)
 
     # get all sulci in dictionary
@@ -278,13 +277,13 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     # get unique combinations of sulci 
     unique_sulci_lists = [list(sulc_list) for sulc_list in set(tuple(sulc_list) for sulc_list in all_sulci_in_dict)]
     
-    if palette == None:        
+    if palette is None:        
         palette = {f"{label}" : f"{randint(low=1, high=248)} {randint(low=1, high=248)} {randint(low=1, high=248)}"  for label in sulci_list}
     else:
         print(palette.keys())
         print(sulci_list)
         
-        assert len(palette.keys()) == len(sulci_list), f"Palette length does not match label list length"
+        assert len(palette.keys()) == len(sulci_list), "Palette length does not match label list length"
 
     # store unique comnbinations of sulci in dictionary, with key by indexed combination number
     ctab_file_dict = {}
@@ -293,14 +292,12 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     # match subject hemi entry to value in the ctab_file_dict
 
     for i, unique_sulci_list in enumerate(unique_sulci_lists):
-         num_sulci = len(unique_sulci_list)
-         ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
-         ctab_file_dict[ctab_name] = unique_sulci_list
+        num_sulci = len(unique_sulci_list)
+        ctab_name = f'{project_name}_ctab_{i}_{num_sulci}_sulci'
+        ctab_file_dict[ctab_name] = unique_sulci_list
     
-    dict_to_JSON(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
+    dict_to_json(dictionary = ctab_file_dict, outdir = project_colortable_dir, project_name = f"{project_name}_ctab_files")
     
-
-
     # Get custom palette for each sulcus
     for key, value in ctab_file_dict.items():
         custom_palette = dict((val, palette[val]) for val in value)
@@ -310,7 +307,7 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
         
         
 
-def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
+def dict_to_json(dictionary: dict, outdir: str, project_name: str):
     '''
     Takes a dictionary and saves as a JSON
 
@@ -325,7 +322,7 @@ def dict_to_JSON(dictionary: dict, outdir: str, project_name: str):
     
     save_file = os.path.join(outdir, f"{project_name}.json")
 
-    with open(save_file, 'w') as file:
+    with open(save_file, 'w', encoding="utf-8") as file:
         json.dump(dictionary, file, indent=4)
 
 
@@ -345,7 +342,7 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
     
     subject_filepaths = get_subjects_list(subjects_list, subjects_dir)
     
-    if by_copy == True:
+    if by_copy is True:
         # Copies files by cp (keeps original file)
         for subject_path in subject_filepaths:
     
@@ -424,9 +421,9 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
         print(f'\n {tarfile_name}.tar.gz already exists. \n')
 
         add_to_tar = input('Do you want to add the subjects to this existing tarfile? [y/n] ').lower()
-        if add_to_tar == 'y' or add_to_tar == 'yes':
+        if add_to_tar in ['y', 'yes']:
          print('\nAdding\n')
-         
+        
          with tarfile.open(f"{project_dir}{tarfile_name}.tar.gz", mode='w:gz') as tar:
             for subject_dir in subject_list:
                 tar.add(subject_dir, recursive=True)
@@ -459,17 +456,17 @@ def write_label(label_name : str, label_faces : np.array, verts : np.array, hemi
     label_ind = np.unique(label_faces)
     if verts is None:
         hemi_surf = f"{subjects_dir}/{subject}/surf/{hemi}.{surface_type}"
-        verts, faces = read_geometry(hemi_surf)
+        verts, _ = read_geometry(hemi_surf)
 
     label_verts = verts[label_ind]
 
     label_filename = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
 
-    with open(label_filename, 'w') as f:
-        f.write(f"#!ascii label , from subject {subject} vox2ras=TkReg coords={surface_type} \n")
-        f.write(f"{len(label_ind)} \n")
+    with open(label_filename, 'w', encoding="utf-8") as file:
+        file.write(f"#!ascii label , from subject {subject} vox2ras=TkReg coords={surface_type} \n")
+        file.write(f"{len(label_ind)} \n")
         for i, ind in enumerate(label_ind):
-            f.write(f"{ind} {np.round(label_verts[i][0], decimals=3)} {np.round(label_verts[i][1], decimals=3)} {np.round(label_verts[i][2], decimals=3)} 0.0000000000 \n")
+            file.write(f"{ind} {np.round(label_verts[i][0], decimals=3)} {np.round(label_verts[i][1], decimals=3)} {np.round(label_verts[i][2], decimals=3)} 0.0000000000 \n")
 
 
 
