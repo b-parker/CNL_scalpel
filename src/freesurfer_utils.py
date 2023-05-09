@@ -503,7 +503,12 @@ def write_label(label_name : str, label_faces : np.array, verts : np.array, hemi
         hemi_surf = f"{subjects_dir}/{subject}/surf/{hemi}.{surface_type}"
         verts, _ = read_geometry(hemi_surf)
 
-    label_verts = verts[label_ind]
+    try:
+        label_verts = verts[label_ind]
+
+    except TypeError:
+        ## if empty list is passed as verts i.e. write a blank label
+        label_verts = []
 
     label_filename = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
 
