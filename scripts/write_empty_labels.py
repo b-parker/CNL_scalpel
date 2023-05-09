@@ -1,13 +1,15 @@
 """
-This script is used to solve the problem whereby different 
-subjects have different labels across PFC, PMC, LPC
+This script is used to solve the problem wherein different 
+subjects have different conmbinations of labels across PFC, PMC, LPC
 
 Because of this, when we project label2vol, the indexing among the labels is different for each subject.
 
 The solution here is to create labels assigned to 0 vertices for each missing label. This way all subjects
-will have the same labels exactly, without changing the label values.
+will have the same labels exactly, without changing the label assignments of each voxel in the volume.
 
-TODO For diligences sake, we should probably create the labels, run label2annot, run label2vol, and then delete labels
+Update:
+This ... doesn't work. Freesurfer requires label files to have data in them to write to an annotation or project into the volume.
+
 
 """
 

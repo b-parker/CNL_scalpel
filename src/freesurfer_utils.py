@@ -61,7 +61,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
 
     sp.Popen(shlex.split(cmd), env=my_env).wait()
 
-def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwargs):
+def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str,  **kwargs):
     """ 
     Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
 
@@ -71,9 +71,10 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
     subjects_dir : str = filepath to freesurfer subjects dir
     subject : str = freesurfer subject ID
     hemi : str = hemisphere 
+    outfile_name : str = outfile name (do not include .nii.gz)
     label_name : str = filepath to label file (do not include .label)
     annot_name : str = filepath to annot file (do not include .annot)
-    outfile : str = outfile name (do not include .nii.gz)
+    
 
     OUTPUT:
     Creates a volume of the label as a binary mask
@@ -86,7 +87,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
         if isinstance(kwargs['label_name'], str):
             label_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['label_name']}.label"
 
-            label_for_cmd = ['--l', label_file] 
+            label_for_cmd = ['--label', label_file] 
             all_labels = ' '.join(label_for_cmd)
             
         if isinstance(kwargs['label_name'], list): 
@@ -97,7 +98,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
             label_for_cmd = [] 
 
             for i, label in kwargs['label_name']:
-                label_for_cmd.append('--l')
+                label_for_cmd.append('--label')
                 label_for_cmd.append(label_files[i])
                 all_labels = ' '.join(label_for_cmd)
 
@@ -122,7 +123,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str,  **kwarg
                 label_for_cmd.append(annot_files[i])
                 all_labels = ' '.join(label_for_cmd)
 
-    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{kwargs['outfile_name']}.nii.gz"
+    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
     os.chdir(f"{subjects_dir}/{subject}")
 
     my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
