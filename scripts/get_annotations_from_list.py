@@ -99,6 +99,7 @@ def main():
     ##
     ##
     ##
+    ## TODO save individual color tables to subject directories
 
     ### Full process
     # sort subject hemispheres by present sulci, stores in dictionary
