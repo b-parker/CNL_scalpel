@@ -67,6 +67,7 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
     Returns
     -------
     brains_updated : dict - dictionary of brains with mask volumes appended
+                          - {subject_id : [brain, lh.sulcus1_mask, lh.sulcus2_mask], ...}
 
     """
     brains_updated = {}
@@ -77,7 +78,7 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
         ## loop through all possible sulci, append mask if sulcus exists in subject
         ## or zero volume if not
         for hemi_idx in [1, 2]: 
-            if hemi == 1:
+            if hemi_idx == 1:
                 sub_hemi = f"lh_{subject}"
             else:
                 sub_hemi = f"rh_{subject}"
@@ -95,7 +96,7 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
                     # else append zero volume
                     zero_volume = np.zeros(brains[subject][0].shape)
                     brains_updated[subject].append(zero_volume)
-                    
+
     return brains_updated
 
 
