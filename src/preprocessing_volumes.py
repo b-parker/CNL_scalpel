@@ -77,7 +77,7 @@ def update_sulcus_indices(annot_idxs : dict, sub_hemi_sulci_idx : dict, all_sulc
     brains_updated : dict - dict of all volumes outputted from load_brains_and_annots with updated sulcus indices
                           - of the form {'subject_id', [np.array('brain.mgz'), np.array('lh.annot'), np.array('rh.annot')]}
     """
-    brains_updated = np.copy(brains)
+    brains_updated = brains.copy()
 
     for subject_hemi in annot_idxs.keys():
         subject = subject_hemi.split('_')[1]
