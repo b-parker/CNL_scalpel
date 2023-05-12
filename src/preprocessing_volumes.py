@@ -29,7 +29,7 @@ def load_brains_and_annots(subjects_path_list : list, annot_name: str) -> dict:
     
     return brains
 
-def load_subject_hemi_sulci_idx(annot_idxs):
+def create_subject_hemi_sulci_idx(annot_idxs):
     """ 
     Create dict of subject_hemi sulci index mappings for update_sulcus_indices
 
@@ -47,68 +47,55 @@ def load_subject_hemi_sulci_idx(annot_idxs):
     
     return sub_hemi_sulci_idx
 
-
-def update_sulcus_indices(annot_idxs : dict, sub_hemi_sulci_idx : dict, all_sulci_idx : dict, brains : dict):
+def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_idxs: dict, subject_hemi_sulci_idx: dict):
     """ 
-    Updates the sulcus indices in an annotation volume to match the sulcus indices in all other volumes.
-
-    Detail:
-    When we project label2vol of an annotation with different numbers of sulci across subjects, the same sulci will have different
-    indices across subject hemispheres. i.e. if we plan to project all PFC sulci, and some subjects have 12 sulci and others have
-    15, then the pmfs-p may not be the same across subjects. 
-
-    To solve this we need to map all sulci indices in each subject to the correct index from the full list of possible sulci.
+    Creates mask volumes from annotations, and saves them to a dictionary of brains
 
     Parameters
     ----------
-    annot_idxs : dict - dictionary of subject_hemi annotations 
-                      - of the form {'hemi_subjectid' : ['suclus1', 'sulcus2', ...], ...}
-                      - json written to annot_ctab_json by fsu.create_ctabs_from_dict
-                      - dict made with load_subject_hemi_sulcus
-    sub_hemi_sulci_idx : dict of dict - maps the sulci in each annot_idx key to an index
-                      - of the form {'subject_hemi' : {'sulcus' : index}}
-    all_sulci_idx : dict - maps all sulci to correct indexes
-                      - of the form {'sulcus' : index}
-    brains : dict - dict of all volumes outputted from load_brains_and_annots
-                      - of the form {'subject_id', [np.array('brain.mgz'), np.array('lh.annot'), np.array('rh.annot')]}
-
+    subjects : list - list of subject IDs
+    brains : dict - dictionary of brains 
+                  - {subject_id : [brain, lh.annot, rh.annot], ...}
+    all_sulci : list - list of all possible sulci
+    annot_idxs : dict - dictionary of subject_hemi sulci
+                      - {'hemi_subjectid' : ['suclus1', 'sulcus2', ...], ...}
+                      - from the json file written to annot_ctab_json by fsu.create_ctabs_from_dict
+    subject_hemi_sulci_idx : dict - dictionary of subject_hemi sulci index mappings
+                      - {'hemi_subjectid' : {'sulcus1' : 0, 'sulcus2' : 1, ...}, ...}
+                      - from create_subject_hemi_sulci_idx in this file
+    
     Returns
     -------
-    brains_updated : dict - dict of all volumes outputted from load_brains_and_annots with updated sulcus indices
-                          - of the form {'subject_id', [np.array('brain.mgz'), np.array('lh.annot'), np.array('rh.annot')]}
+    brains_updated : dict - dictionary of brains with mask volumes appended
+
     """
-    brains_updated = brains.copy()
-
-    for subject_hemi in annot_idxs.keys():
-        subject = subject_hemi.split('_')[1]
-        hemi = subject_hemi.split('_')[0]
+    brains_updated = {}
+    for subject in subjects:
         
-        incorrect_indexes = sub_hemi_sulci_idx[subject_hemi]
-        correct_indexes = all_sulci_idx
-        
-        if hemi == 'lh':
-            old_brain = brains_updated[subject][1]
-            new_brain = np.copy(old_brain)
-            for sulcus in incorrect_indexes.keys():
-                old_sulcus_idx = incorrect_indexes[sulcus]
-                new_sulcus_idx = correct_indexes[sulcus]
-                if old_sulcus_idx != new_sulcus_idx: 
-                    print(f"{subject} {hemi} is different for {sulcus}, changing {old_sulcus_idx} to {new_sulcus_idx}")
-                    new_brain[old_brain == old_sulcus_idx] = new_sulcus_idx
-
-                    brains_updated[subject][1] = new_brain
-        
-        if hemi == 'rh':
-            old_brain = brains_updated[subject][2]
-            new_brain = np.copy(old_brain)
-            for sulcus in incorrect_indexes.keys():
-                old_sulcus_idx = incorrect_indexes[sulcus]
-                new_sulcus_idx = all_sulci_idx[sulcus]
-                if old_sulcus_idx != new_sulcus_idx: 
-                    print(f"{subject} {hemi} is different for {sulcus}, changing {old_sulcus_idx} to {new_sulcus_idx}")
-                    new_brain[old_brain == old_sulcus_idx] = new_sulcus_idx
-
-                    brains_updated[subject][2] = new_brain
+        brains_updated[subject] = [brains[subject][0]]
+        # for each hemisphere
+        ## loop through all possible sulci, append mask if sulcus exists in subject
+        ## or zero volume if not
+        for hemi_idx in [1, 2]: 
+            if hemi == 1:
+                sub_hemi = f"lh_{subject}"
+            else:
+                sub_hemi = f"rh_{subject}"
+            for sulcus  in all_sulci:
+                if sulcus in annot_idxs[sub_hemi]:
+                    # get index of sulcus as used in subject's annot
+                    subject_specific_sulcus_index = subject_hemi_sulci_idx[sub_hemi][sulcus]
+                    # Zero any value not equal to subject index
+                    new_volume = np.where(brains[subject][hemi_idx] == subject_specific_sulcus_index, brains[subject][hemi_idx], 0)
+                    # binarize
+                    new_volume_binarized = np.where(new_volume==0, new_volume, 1)
+                    # append masked volume to updated brains
+                    brains_updated[subject].append(new_volume_binarized)
+                else:
+                    # else append zero volume
+                    zero_volume = np.zeros(brains[subject][0].shape)
+                    brains_updated[subject].append(zero_volume)
+                    
     return brains_updated
 
 
