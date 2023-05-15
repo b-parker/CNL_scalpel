@@ -72,7 +72,7 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
     """
     brains_updated = {}
     for subject in subjects:
-        
+        # initiate subject with brain volume
         brains_updated[subject] = [brains[subject][0]]
         # for each hemisphere
         ## loop through all possible sulci, append mask if sulcus exists in subject
