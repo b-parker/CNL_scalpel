@@ -51,6 +51,8 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
     """ 
     Creates mask volumes from annotations, and saves them to a dictionary of brains
 
+    NOTE: moves brain volume from first to last in keeping with wolny h5 file structure
+
     Parameters
     ----------
     subjects : list - list of subject IDs
@@ -73,7 +75,7 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
     brains_updated = {}
     for subject in subjects:
         # initiate subject with brain volume
-        brains_updated[subject] = [brains[subject][0]]
+        brains_updated[subject] = []
         # for each hemisphere
         ## loop through all possible sulci, append mask if sulcus exists in subject
         ## or zero volume if not
@@ -96,6 +98,8 @@ def mask_brains_from_annot(subjects: list, brains: dict, all_sulci: list, annot_
                     # else append zero volume
                     zero_volume = np.zeros(brains[subject][0].shape)
                     brains_updated[subject].append(zero_volume)
+
+        brains_updated[subject].append(brains[subject][0])
 
     return brains_updated
 
