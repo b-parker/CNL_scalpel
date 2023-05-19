@@ -93,16 +93,25 @@ def main():
         for subject in subjects:
             save_file = h5py.File(f"/Users/benparker/Desktop/cnl/subjects/{subject}_{annot_name}.h5", 'w')
             print(f"Saving {subject}")
-            print("\n\n\n")
-            for volume_idx, volume in enumerate(brains_masked[subject]):
-                save_file.create_dataset(f'volume_{volume_idx}', 
-                                         (256, 256, 256), 
-                                         dtype='float64' , 
-                                         data = volume,
-                                         compression='gzip',
-                                         compression_opts=9)
-                print(f"Saving volume #{volume_idx}")
-                print("\n\n\n")
+            print("\n")
+            stacked_label = np.stack(brains_masked[subject][:-1], axis=0)
+            save_file.create_dataset('label', 
+                                    stacked_label.shape, 
+                                    dtype='float64' , 
+                                    data = stacked_label,
+                                    compression='gzip',
+                                    compression_opts=9)
+            added_dim = np.expand_dims(brains_masked[subject][-1], 0)
+            save_file.create_dataset('raw', 
+                                    added_dim.shape, 
+                                    dtype='float64' , 
+                                    data = added_dim,
+                                    compression='gzip',
+                                    compression_opts=9)
+            
+
+            print(f"{subject} saved")
+            print("\n")
             save_file.close()
             gc.collect()
 

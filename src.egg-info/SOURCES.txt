@@ -3,6 +3,7 @@ setup.py
 src/__init__.py
 src/freesurfer_utils.py
 src/mesh_laplace_sulci.py
+src/preprocessing_volumes.py
 src/surface_funcs.py
 src/utility_funcs.py
 src.egg-info/PKG-INFO
