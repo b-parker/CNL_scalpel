@@ -75,7 +75,7 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, label_names: 
 
      ## Set environment variables for the subject
      existing_env = os.environ.copy()
-     existing_env["SUBJECTS_DIR"] = f"/home/connectome-raw/{subject_id}/T1w"
+     existing_env["SUBJECTS_DIR"] = subject_dir.absolute()
 
      outdir = Path(outdir)
 
