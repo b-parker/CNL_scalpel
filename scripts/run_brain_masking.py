@@ -11,8 +11,7 @@ import gc
 def main():
     subjects_dir = "/Users/benparker/Desktop/cnl/neurocluster/HCP/subjects"
     subjects_path_list = fsu.get_subjects_list(subjects_dir=subjects_dir, 
-                                           subjects_list="/Users/benparker/Desktop/cnl/neurocluster/HCP/subject_lists/HCP_processed_subs_all.txt")[-13:]
-    
+                                           subjects_list="/Users/benparker/Desktop/cnl/neurocluster/HCP/subject_lists/HCP_processed_subs_all.txt")    
     batch_size = np.arange(0, len(subjects_path_list), 5)
     batch_size = np.append(batch_size, len(subjects_path_list))
 
