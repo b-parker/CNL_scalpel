@@ -61,6 +61,49 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
 
     sp.Popen(shlex.split(cmd), env=my_env).wait()
 
+
+
+## run annotation2label on set of labels
+def freesurfer_annotation2label(subject_dir: str, subject_id: str, label_names: list, outdir: str, annot_name: str ='aparc.a2009s'):
+
+     ## Check existence of subject and annotations
+     subject_dir = Path(subject_dir)
+     subject_path = subject_dir / subject_id / 'T1w' / subject_id
+     assert subject_path.exists(), f"Subject not found at {subject_path.absolute()}"
+     annot_path = subject_path / "label" / f"lh.{annot_name}.annot" 
+     assert annot_path.exists(), f"Annotation not found at {annot_path.absolute()}.annot"
+
+     ## Set environment variables for the subject
+     existing_env = os.environ.copy()
+     existing_env["SUBJECTS_DIR"] = f"/home/connectome-raw/{subject_id}/T1w"
+
+     outdir = Path(outdir)
+
+     ## Create command for annotation - append all labels in label_names
+     for hemi in ['lh', 'rh']:
+         command = ['mri_annotation2label',
+                    f'--subject {subject_id}',
+                    f'--hemi {hemi}',
+                    f'--annotation {annot_name}',
+                    f'--outdir {outdir.absolute()}']
+         
+#         for label in label_names:
+#             command.append(f'--label {label}')
+         print("COMMAND:", " ".join(command)) 
+         ## 
+         cmd_open = sp.Popen(' '.join(command), env = existing_env, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+
+         stdout, stderr = cmd_open.communicate()  
+
+         if cmd_open.returncode == 0:
+              print("Command succeeded with output:")
+              print(stdout.decode())
+         else:
+              print("Command failed with error:")
+              print(stderr.decode())
+
+
+
 def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str,  **kwargs):
     """ 
     Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
