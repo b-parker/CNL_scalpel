@@ -50,14 +50,22 @@ def get_unique_labels(subjects_dir: str, dataset: str):
   subjects = os.listdir(subjects_dir)
   labels_df = pd.DataFrame(columns=['dataset', 'label', 'count'])
   for subject in subjects:
-    label_dir = os.path.join(subject, 'label')
+    label_dir = os.path.join(subjects_dir, subject, 'label')
     if os.path.exists(label_dir):
       labels = os.listdir(label_dir)
       for label in labels:
-        if label in labels_df['label'].to_list():
-          labels_df[labels_df['label'] == label]['count'] += 1
+        strip_label = label[3:-6]
+        if strip_label in labels_df['label'].to_list():
+          label_index = labels_df[labels_df['label'] == strip_label].index[0]
+          label_count = labels_df.loc[label_index, 'count']
+          labels_df.loc[label_index, 'count'] = label_count + 1
+          # labels_df[labels_df['label'] == strip_label]['count'] = labels_df[labels_df['label'] == strip_label]['count'] + 1
         else:
-          new_row = [dataset, label, 1]
+          new_row = [dataset, strip_label, 1]
           labels_df.loc[len(labels_df)] = new_row
   
   return labels_df
+
+# subjects_dir = '/Users/benparker/Desktop/cnl/subjects'
+
+# df = get_unique_labels(subjects_dir=subjects_dir, dataset='test')
