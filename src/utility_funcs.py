@@ -3,6 +3,8 @@ import functools
 import nibabel as nb
 import subprocess as sp
 import shlex
+import os
+import pandas as pd
 
 def memoize(obj):
   cache = obj.cache = {}
@@ -28,3 +30,34 @@ def mris_convert_command(filepath, custom_filename=None):
   args = shlex.split(cmd)
   run_command = sp.Popen(args)
 
+
+def get_unique_labels(subjects_dir: str, dataset: str):
+  """
+  Search through subjects dir and get all labels / counts as DataFrame
+
+  INPUT:
+  ______
+  subjects_dir: str - filepath to subject directory
+  dataset: str - name of dataset for dataframe
+
+  OUTPUT:
+  ______
+  labels_df: pd.DataFrame - DataFrame of labels, columns = ['dataset', 'label', 'count']
+  
+
+  """
+
+  subjects = os.listdir(subjects_dir)
+  labels_df = pd.DataFrame(columns=['dataset', 'label', 'count'])
+  for subject in subjects:
+    label_dir = os.path.join(subject, 'label')
+    if os.path.exists(label_dir):
+      labels = os.listdir(label_dir)
+      for label in labels:
+        if label in labels_df['label'].to_list():
+          labels_df[labels_df['label'] == label]['count'] += 1
+        else:
+          new_row = [dataset, label, 1]
+          labels_df.loc[len(labels_df)] = new_row
+  
+  return labels_df
