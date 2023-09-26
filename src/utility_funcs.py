@@ -54,7 +54,7 @@ def get_unique_labels(subjects_dir: str, dataset: str):
     if os.path.exists(label_dir):
       labels = os.listdir(label_dir)
       for label in labels:
-        strip_label = label[3:-6]
+        strip_label = os.path.splitext
         if strip_label in labels_df['label'].to_list():
           label_index = labels_df[labels_df['label'] == strip_label].index[0]
           label_count = labels_df.loc[label_index, 'count']
