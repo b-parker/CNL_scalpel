@@ -182,7 +182,6 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
 
     sp.Popen(shlex.split(cmd), env = my_env).wait()
 
-    
 
 
 def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
@@ -589,3 +588,63 @@ def read_label(label_name):
     RAS_coords[:,2] = df_label.z_ras
     
     return vertices, RAS_coords
+
+def get_sulcus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_threshold: int = 0):
+    """ 
+    Returns all label indices and RAS coordinates for sulcus within freesurfer label
+
+    INPUT:
+    _____
+    label_index: np.array - numpy array of label indexes from src.read_label()
+    label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
+    curv: np.array - numpy array of curvature values from nb.freesurfer.read_morph_data()
+    curv_threshold: int - value for thresholding curvature value
+
+    OUTPUT:
+    sulcus_index: np.array - numpy array of sulcus indexes from src.read_label()
+    sulcus_RAS: np.array - numpy array of sulcus RAS vertices from src.read_label()
+
+    """
+        
+    sulcus_index = []
+    sulcus_RAS = []
+
+    for point, RAS in zip(label_index, label_RAS):
+        if curv[point] > curv_threshold:
+            sulcus_index.append(point)
+            sulcus_RAS.append(RAS)
+        else:
+            continue
+    return np.array(sulcus_index), np.array(sulcus_RAS)
+
+
+def get_gyrus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_threshold: int = 0):
+    """ 
+    Returns all label indices and RAS coordinates for gyrus within freesurfer label
+
+    INPUT:
+    _____
+    label_index: np.array - numpy array of label indexes from src.read_label()
+    label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
+    curv: np.array - numpy array of curvature values from nb.freesurfer.read_morph_data()
+    curv_threshold: int - value for thresholding curvature value
+
+    OUTPUT:
+    gyrus_index: np.array - numpy array of gyrus indexes from src.read_label()
+    gyrus_RAS: np.array - numpy array of gyrus RAS vertices from src.read_label()
+
+    """
+        
+    gyrus_index = np.array([])
+    gyrus_RAS = np.array([])
+
+    for point, RAS in zip(label_index, label_RAS):
+        if curv[point] < curv_threshold:
+            np.append(gyrus_index, point)
+            np.append(gyrus_RAS, RAS)
+        else:
+            continue
+    return gyrus_index, gyrus_RAS
+
+
+
