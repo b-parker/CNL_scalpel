@@ -182,6 +182,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
 
     sp.Popen(shlex.split(cmd), env = my_env).wait()
 
+    
 
 
 def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
@@ -589,6 +590,41 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
+def new_write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, overwrite: bool = False):
+    """
+    Write freesurfer label file from label indexes and RAS coordinates
+
+    INPUT:
+    _____
+    label_indexes: np.array - numpy array of label indexes from src.read_label()
+    label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
+    label_name: str - name of label
+    hemi: str - hemisphere of label
+    subject_dir: str or Path - path to subject directory
+    
+    """
+    
+    if isinstance(subject_dir, str):
+        subject_dir = Path(subject_dir)
+    
+
+    label_filename = subject_dir / 'label' / f'{hemi}.{label_name}.label'
+    
+    if overwrite == False:
+        assert not label_filename.exists(), f"{hemi}.{label_name} already exists for subject at {subject_dir.absolute()}"
+
+    subject_id = subject_dir.name
+    label_length = label_indexes.shape[0]
+
+    print(f'Writing label {label_filename.name} for {subject_id}')
+    
+    with open(label_filename.absolute(), 'w') as label_file:
+        label_file.writelines(f'#!ascii label  , from subject {subject_id} vox2ras=TkReg coords=white\n')
+        label_file.writelines(f'{label_length}\n')
+        for i in range(label_length):
+            label_line = f"{label_indexes[i]} {label_RAS[i][0]} {label_RAS[i][1]} {label_RAS[i][2]} 0.0000000000 \n"
+            label_file.write(label_line)
+
 def get_sulcus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_threshold: int = 0):
     """ 
     Returns all label indices and RAS coordinates for sulcus within freesurfer label
@@ -610,6 +646,9 @@ def get_sulcus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_
     sulcus_RAS = []
 
     for point, RAS in zip(label_index, label_RAS):
+        if not isinstance(point, int):
+            point = int(point)
+
         if curv[point] > curv_threshold:
             sulcus_index.append(point)
             sulcus_RAS.append(RAS)
