@@ -38,6 +38,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     ## Sort labels into strings 
     label_for_cmd = []
 
+  
     for label in label_list:
         label_for_cmd.append('--l')
         label_filename = f"{hemi}.{label}.label"
@@ -53,6 +54,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     cmd = f"mris_label2annot \
         --s {subject_id} \
         --ctab {ctab_path}\
+        --ldir {subject_path}/label\
         --a {annot_name} \
         --h {hemi} \
         {all_labels}"
@@ -268,7 +270,7 @@ def get_sulci_filepaths(subject_filepath: str, sulci_list: list, hemi: str) -> l
 
 
 
-def create_freesurfer_ctab(ctab_name: str, label_list: str, outdir: str, palette: dict = None ):
+def create_freesurfer_ctab(ctab_name: str, label_list: list, outdir: str, palette: dict = None ):
     '''
     Creates a color table file for label2annot 
     
