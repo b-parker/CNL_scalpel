@@ -17,7 +17,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     Runs freesurfer label2annot 
 
     INPUT:
-    subjects_dir: str = freesurfer subjects directory, os.environ['SUBEJCTS_DIR] called below
+    subjects_dir: str = freesurfer subjects directory, os.environ['SUBEJCTS_DIR'] called below
     subject_path: str = filepath to subject's directory
     label_list: str = list of strings containing all desired labels
     hemi: str = hemisphere
@@ -57,6 +57,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
         --ldir {subject_path}/label\
         --a {annot_name} \
         --h {hemi} \
+        --outdir {outdir} \
         {all_labels}"
     
     print(f'Calling: {cmd}')
