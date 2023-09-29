@@ -57,7 +57,6 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
         --ldir {subject_path}/label\
         --a {annot_name} \
         --h {hemi} \
-        --outdir {outdir} \
         {all_labels}"
     
     print(f'Calling: {cmd}')
