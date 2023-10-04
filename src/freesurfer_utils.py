@@ -10,6 +10,8 @@ from numpy.random import randint
 import numpy as np
 from nibabel.freesurfer.io import read_geometry
 import pandas as pd
+from types import NoneType
+
 
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, 
                            label_list: list, hemi: str, ctab_path: str, annot_name: str):
@@ -168,7 +170,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
                 label_for_cmd.append(annot_files[i])
                 all_labels = ' '.join(label_for_cmd)
 
-    if isinstance(outfile_subjects_dir, None):
+    if isinstance(outfile_subjects_dir, NoneType):
         outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
         os.chdir(f"{subjects_dir}/{subject}")
     else:
