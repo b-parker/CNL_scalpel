@@ -106,7 +106,7 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, label_names: 
 
 
 
-def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str,  **kwargs):
+def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str, outfile_subjects_dir = None,  **kwargs):
     """ 
     Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
 
@@ -168,8 +168,11 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
                 label_for_cmd.append(annot_files[i])
                 all_labels = ' '.join(label_for_cmd)
 
-    outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
-    os.chdir(f"{subjects_dir}/{subject}")
+    if isinstance(outfile_subjects_dir, None):
+        outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
+        os.chdir(f"{subjects_dir}/{subject}")
+    else:
+        outfile = f"{outfile_subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
 
     my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
     cmd = f"mri_label2vol \
