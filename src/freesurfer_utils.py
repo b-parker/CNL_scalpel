@@ -68,41 +68,52 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
 
 
 ## run annotation2label on set of labels
-def freesurfer_annotation2label(subject_dir: str, subject_id: str, label_names: list, outdir: str, annot_name: str ='aparc.a2009s'):
+def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str, annot_name: str ='aparc.a2009s'):
+    """
+    Runs freesurfer annotation2label command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label
+
+    INPUT:
+    subject_dir : str = filepath to freesurfer subjects dir
+    subject_id : str = freesurfer subject ID
+    label_names : list = list of label names to be converted to labels
+    outdir : str = filepath to output directory
+    annot_name : str = filepath to annot file (do not include .annot)
+
+    OUTPUT:
+    Creates a label for each label name in the annotation
+    """
 
      ## Check existence of subject and annotations
-     subject_dir = Path(subject_dir)
-     subject_path = subject_dir / subject_id / 'T1w' / subject_id
-     assert subject_path.exists(), f"Subject not found at {subject_path.absolute()}"
-     annot_path = subject_path / "label" / f"lh.{annot_name}.annot" 
-     assert annot_path.exists(), f"Annotation not found at {annot_path.absolute()}.annot"
+    subject_dir = Path(subject_dir)
+    subject_path = subject_dir / subject_id 
+    assert subject_path.exists(), f"Subject not found at {subject_path.absolute()}"
+    annot_path = subject_path / "label" / f"lh.{annot_name}.annot" 
+    assert annot_path.exists(), f"Annotation not found at {annot_path.absolute()}.annot"
 
-     ## Set environment variables for the subject
-     existing_env = os.environ.copy()
-     existing_env["SUBJECTS_DIR"] = subject_dir.absolute()
+    ## Set environment variables for the subject
+    existing_env = os.environ.copy()
+    existing_env["SUBJECTS_DIR"] = subject_dir.absolute()
 
-     outdir = Path(outdir)
+    outdir = Path(outdir)
 
-     ## Create command for annotation - append all labels in label_names
-     for hemi in ['lh', 'rh']:
-         command = ['mri_annotation2label',
+    ## Create command for annotation - append all labels in label_names
+    for hemi in ['lh', 'rh']:
+        command = ['mri_annotation2label',
                     f'--subject {subject_id}',
                     f'--hemi {hemi}',
                     f'--annotation {annot_name}',
                     f'--outdir {outdir.absolute()}']
          
-#         for label in label_names:
-#             command.append(f'--label {label}')
-         print("COMMAND:", " ".join(command)) 
-         ## 
-         cmd_open = sp.Popen(' '.join(command), env = existing_env, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+        print("COMMAND:", " ".join(command)) 
+        ## 
+        cmd_open = sp.Popen(' '.join(command), env = existing_env, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
 
-         stdout, stderr = cmd_open.communicate()  
+        stdout, stderr = cmd_open.communicate()  
 
-         if cmd_open.returncode == 0:
+        if cmd_open.returncode == 0:
               print("Command succeeded with output:")
               print(stdout.decode())
-         else:
+        else:
               print("Command failed with error:")
               print(stderr.decode())
 
@@ -317,6 +328,9 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     sulci_list : list - list of all possible sulci
     palette : dict - custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
     project_name : str - unique identifier for project 
+
+    OUTPUT:
+    ctab files for each unique combination of sulci
     '''
     print(json_file)
     with open(json_file, 'r', encoding="utf-8") as file:
@@ -367,6 +381,9 @@ def dict_to_json(dictionary: dict, outdir: str, project_name: str):
     outdir : str - write directory for json of colortables
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
+
+    OUTPUT:
+    .json file of dictionary
     '''
     print(outdir)
     assert os.path.exists(outdir), f"{outdir} does not exist"
@@ -386,6 +403,9 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
     subjects_list : str - filepath to subjects list
     sulci_list : dict - dict of sulci,{old_name: new_name}
     by_copy : bool - if True, copies files by cp (keeps original file) ; if False, renames files by mv (deletes original file)
+
+    OUTPUT:
+    Renamed label files
     
     '''
     assert os.path.exists(subjects_dir), f"{subjects_dir} does not exist"
@@ -448,7 +468,7 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     subject_list : str - filepath to .txt list of subjects
     subjects_dir : str - filepath freesurfer subjects directory
 
-
+    
     """
     # Get subject list
     subject_list = get_subjects_list(subjects_dir=subjects_dir, subjects_list=subject_list)
@@ -525,50 +545,6 @@ def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, s
                 tar.add(f"{subject_dir}/{filepath_from_subject_dir}")
         else: 
             print(f'\nSubjects not added to {tarfile_name}.\n')
-      
-
-def write_label(label_name : str, label_faces : np.array, verts : np.array, hemi : str, subject : str, subjects_dir : str, surface_type : str = 'white'):
-    """
-    Write a freesurfer label file 
-
-    INPUT:
-    label_name : str - name of label for save file
-    label_faces : np.array - array of faces for label
-    verts : np.array - array of all vertices in subject hemi; if None, will read in subject hemisphere from /surf/ file
-    hemi : str - hemisphere of label
-    subject : str - subject ID
-    subjects_dir : str - filepath to freesurfer subjects directory
-    surface_type : str - surface type for label (default = 'white')
-
-    OUTPUT:
-    writes label file to subject label directory
-    """
-    
-    assert os.path.exists(subjects_dir), f'{subjects_dir} does not exist'
-    subject_dir = f"{subjects_dir}/{subject}"
-    assert os.path.exists(subject_dir), f'{subject_dir} does not exist'
-
-
-    label_ind = np.unique(label_faces)
-    if verts is None:
-        hemi_surf = f"{subjects_dir}/{subject}/surf/{hemi}.{surface_type}"
-        verts, _ = read_geometry(hemi_surf)
-
-    try:
-        label_verts = verts[label_ind]
-
-    except TypeError:
-        ## if empty list is passed as verts i.e. write a blank label
-        label_verts = []
-
-    label_filename = f"{subjects_dir}/{subject}/label/{hemi}.{label_name}.label"
-
-    with open(label_filename, 'w', encoding="utf-8") as file:
-        file.write(f"#!ascii label , from subject {subject} vox2ras=TkReg coords={surface_type} \n")
-        file.write(f"{len(label_ind)} \n")
-        for i, ind in enumerate(label_ind):
-            file.write(f"{ind} {np.round(label_verts[i][0], decimals=3)} {np.round(label_verts[i][1], decimals=3)} {np.round(label_verts[i][2], decimals=3)} 0.0000000000 \n")
-
 
 
 def read_label(label_name):
@@ -597,7 +573,7 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
-def new_write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, overwrite: bool = False):
+def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, overwrite: bool = False):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -681,16 +657,102 @@ def get_gyrus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_t
 
     """
         
-    gyrus_index = np.array([])
-    gyrus_RAS = np.array([])
+    gyrus_index = []
+    gyrus_RAS = []
 
     for point, RAS in zip(label_index, label_RAS):
         if curv[point] < curv_threshold:
-            np.append(gyrus_index, point)
-            np.append(gyrus_RAS, RAS)
+            gyrus_index.append(point)
+            gyrus_RAS.append(RAS)
         else:
             continue
-    return gyrus_index, gyrus_RAS
+    return np.array(gyrus_index), np.array(gyrus_RAS)
+
+
+def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str, data_dir: str or Path) -> pd.DataFrame:
+    """ 
+    Takes a subject list and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
+
+    INPUT:
+    subject: str - subject ID
+    label_name: str - name of the label to be included in the dataframe
+    hemi: str - hemisphere to be included in the dataframe (must be 'lh', 'rh')
+    data_dir: str or Path - directory where the stats.txt file is located
+
+    OUTPUT:
+    pd.DataFrame
+
+
+    """
+
+    assert hemi in ['lh', 'rh'], "hemi must be 'lh' or 'rh'"
+
+    if isinstance(data_dir, str):
+        data_dir = Path(data_dir)
+
+    txt_path = data_dir / f"{hemi}.{label_name}.stats.txt"
+    assert txt_path.exists(), f'the file {txt_path} does not exist.'
+
+    all_stats_df = pd.DataFrame(columns=['sub', 'hemi', 'label', 'num_vertices', 'surface_area_mm^2', 'gray_matter_volume_mm^3', 'avg_cortical_thickness', 'avg_cortical_thickness_std', 'rectified_mean_curvature', 'rectified_gaussian_curvature', 'folding_index', 'intrinsic_curvature'])
+
+    with open(txt_path, 'r') as fp:
+        new_surf = fp.readlines()
+    
+    row_stats = new_surf[-1]
+    row_stats = row_stats.split(' ')
+    row_stats = [i for i in row_stats if i != '']
+    label_name = row_stats[-1][:-1].split('.')[1]
+
+    num_rows =  [row_stats[0], row_stats[1], row_stats[2], row_stats[3], row_stats[4], row_stats[5], row_stats[6], row_stats[7], row_stats[8]]
+    num_rows = [float(i) for i in num_rows]
+    all_stats_row = [subject, hemi, label_name, num_rows[0], num_rows[1], num_rows[2], num_rows[3], num_rows[4], num_rows[5], num_rows[6], num_rows[7], num_rows[8]]
+    
+    all_stats_df.loc[len(all_stats_df)] = all_stats_row
+
+    return all_stats_df
+
+
+def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list, label_name: str or list, hemi: str or list, data_dir_from_subject_fs_dir:str = 'label') -> pd.DataFrame:
+    """ 
+    Takes a subject list, label list, and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
+
+    INPUT:
+    subjects_dir: str or Path - FreeSurfer subject directory
+    subject_list: list - list of subjects to be included in the dataframe
+    label_name: str or list - name of the label to be included in the dataframe
+    hemi: str or list - hemisphere to be included in the dataframe (must be 'lh', 'rh', or 'both')
+    data_dir_from_subject_fs_dir: str - directory where the stats.txt file is located relative to the subject's FreeSurfer directory, default is 'label'
+
+    OUTPUT: 
+    pd.DataFrame
+
+    """
+
+    assert hemi in ['lh', 'rh', 'both'], "hemi must be 'lh', 'rh', or 'both'"
+    if hemi == 'both':
+        hemi_list = ['lh', 'rh']
+    else:
+        hemi_list = [hemi]
+
+    if isinstance(label_name, str):
+        label_name = [label_name]
+        
+    if isinstance(subjects_dir, str):
+        subjects_dir = Path(subjects_dir)
+
+    all_stats_df = pd.DataFrame(columns=['sub', 'hemi', 'label', 'num_vertices', 'surface_area_mm^2', 'gray_matter_volume_mm^3', 'avg_cortical_thickness', 'avg_cortical_thickness_std', 'rectified_mean_curvature', 'rectified_gaussian_curvature', 'folding_index', 'intrinsic_curvature'])
+
+    
+    for sub in subject_list:
+        for hemi in hemi_list:
+            for label in label_name:
+                data_dir = subjects_dir / sub / data_dir_from_subject_fs_dir 
+                assert data_dir.exists(), f"{data_dir} does not exist"
+                new_row = mris_anatomical_stats2DataFrame_row(sub, label, hemi, data_dir)
+                all_stats_df = pd.concat([all_stats_df, new_row], axis = 0)
+
+    return all_stats_df
+    
 
 
 
