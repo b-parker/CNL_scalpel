@@ -717,7 +717,7 @@ def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list,
     Takes a subject list, label list, and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 
     INPUT:
-    subjects_dir: str or Path - FreeSurfer subject directory
+    subjects_dir: str or Path - FreeSurfer subjects directory
     subject_list: list - list of subjects to be included in the dataframe
     label_name: str or list - name of the label to be included in the dataframe
     hemi: str or list - hemisphere to be included in the dataframe (must be 'lh', 'rh', or 'both')
