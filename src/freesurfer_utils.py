@@ -19,7 +19,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     Runs freesurfer label2annot 
 
     INPUT:
-    subjects_dir: str = freesurfer subjects directory, os.environ['SUBEJCTS_DIR'] called below
+    subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
     subject_path: str = filepath to subject's directory
     label_list: str = list of strings containing all desired labels
     hemi: str = hemisphere
@@ -68,7 +68,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
 
 
 ## run annotation2label on set of labels
-def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str, annot_name: str ='aparc.a2009s'):
+def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str = None, annot_name: str ='aparc.a2009s'):
     """
     Runs freesurfer annotation2label command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label
 
@@ -93,6 +93,9 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str, 
     ## Set environment variables for the subject
     existing_env = os.environ.copy()
     existing_env["SUBJECTS_DIR"] = subject_dir.absolute()
+
+    if outdir == None:
+        outdir = subject_path / "/label"
 
     outdir = Path(outdir)
 

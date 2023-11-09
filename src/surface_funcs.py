@@ -15,6 +15,7 @@ import cortex
 import src.mesh_laplace_sulci
 
 import gdist
+import surfdist
 import pygeodesic.geodesic as geodesic
 
 # Plotting
@@ -24,12 +25,12 @@ from mpl_toolkits import mplot3d
 
 import matplotlib.pyplot as plt
 
-from utility_funcs import mris_convert_command
+from src.utility_funcs import mris_convert_command
 
 # Meshes
 import igl
 import meshplot 
-from freesurfer_utils import *
+from src.freesurfer_utils import *
 
 
 
@@ -218,7 +219,7 @@ def getDistMatrix(subjects_dir=str, labels=list, sub=str, hemi=str, savedir=str,
 # Use boundary sulci to capture all vertices in surface between boundaries, and plot
 
 import functools
-from utility_funcs import memoize
+from src.utility_funcs import memoize
 
 class ScalpelSurface:
     """
