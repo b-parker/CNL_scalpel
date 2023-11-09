@@ -689,3 +689,17 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
                     np.append(visited, adj)
     
     return label_points
+
+
+def get_label_subsets(label_faces: np.array) -> list:
+    """ 
+    
+    """
+    from scipy.cluster.hierarchy import DisjointSet
+
+    dj_set = DisjointSet(np.unique(label_faces))
+
+    for triangular_face in label_faces:
+        dj_set.merge(triangular_face[0], triangular_face[1])
+        dj_set.merge(triangular_face[0], triangular_face[2])
+    return dj_set
