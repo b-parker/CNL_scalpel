@@ -703,3 +703,24 @@ def get_label_subsets(label_faces: np.array) -> list:
         dj_set.merge(triangular_face[0], triangular_face[1])
         dj_set.merge(triangular_face[0], triangular_face[2])
     return dj_set
+
+def create_graph_from_mesh(coordinates, triangles):
+    G = nx.Graph()
+
+    # Add edges based on triangles
+    for triangle in triangles:
+        for i in range(3):
+            for j in range(i+1, 3):
+                # Add an edge between the vertices of each triangle
+                G.add_edge(triangle[i], triangle[j])
+
+    return G
+
+def find_shortest_path_in_mesh(coordinates, triangles, source_index, target_index):
+    # Create a graph from the mesh
+    G = create_graph_from_mesh(coordinates, triangles)
+
+    # Find the shortest path
+    path = nx.shortest_path(G, source=source_index, target=target_index)
+
+    return path
