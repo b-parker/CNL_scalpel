@@ -29,7 +29,7 @@ from src.utility_funcs import mris_convert_command
 
 # Meshes
 import igl
-import meshplot 
+#import meshplot 
 from src.freesurfer_utils import *
 
 
