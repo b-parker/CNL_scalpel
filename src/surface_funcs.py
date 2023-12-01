@@ -30,6 +30,7 @@ from src.utility_funcs import mris_convert_command
 # Meshes
 import igl
 import meshplot 
+import networkx as nx
 from src.freesurfer_utils import *
 
 
@@ -624,21 +625,24 @@ def find_edge_vert(label_verts : np.array, direction : str):
         OUTPUT:
         first_vert_index: int - index of first vert inside boundary
      """
-     if direction == 'anterior':
-            dir_idx = 1
-            dir_function = np.max
-     if direction == 'posterior':
-            dir_idx = 1
-            dir_function = np.min
-     if direction == 'inferior':
+      if direction == 'anterior':
+        dir_idx = 1
+        dir_function = np.max
+    if direction == 'posterior':
+        dir_idx = 1
+        dir_function = np.min
+    if direction == 'inferior':
         dir_idx = 2
         dir_function = np.min
-     if direction == 'superior':
+    if direction == 'superior':
         dir_idx = 2
         dir_function = np.max
-     first_point = dir_function(label_verts[:, dir_idx])
-     first_vert_index = np.where(label_verts[:, dir_idx] == first_point)[0][0] 
-     return first_vert_index
+
+    first_point = dir_function(label_RAS[:, dir_idx])
+    first_vert_index = np.where(label_RAS[:, dir_idx] == first_point)[0][0]
+    first_RAS = label_RAS[first_vert_index]
+    
+    return np.array([first_vert_index]), np.array([first_RAS])
 
 def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
     """
@@ -692,9 +696,6 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
 
 
 def get_label_subsets(label_faces: np.array) -> list:
-    """ 
-    
-    """
     from scipy.cluster.hierarchy import DisjointSet
 
     dj_set = DisjointSet(np.unique(label_faces))
@@ -702,25 +703,28 @@ def get_label_subsets(label_faces: np.array) -> list:
     for triangular_face in label_faces:
         dj_set.merge(triangular_face[0], triangular_face[1])
         dj_set.merge(triangular_face[0], triangular_face[2])
+
+    dj_set = [list(face) for face in label_faces if face[0] or face[1] or face[2] in dj_set.subsets()]
     return dj_set
 
-def create_graph_from_mesh(coordinates, triangles):
+def create_graph_from_mesh(coordinates, faces):
     G = nx.Graph()
 
-    # Add edges based on triangles
-    for triangle in triangles:
+    # Add edges based on faces
+    for face in faces:
         for i in range(3):
             for j in range(i+1, 3):
                 # Add an edge between the vertices of each triangle
-                G.add_edge(triangle[i], triangle[j])
+                G.add_edge(face[i], face[j])
 
     return G
 
-def find_shortest_path_in_mesh(coordinates, triangles, source_index, target_index):
+def find_shortest_path_in_mesh(coordinates, faces, source_index, target_index):
     # Create a graph from the mesh
-    G = create_graph_from_mesh(coordinates, triangles)
+    G = create_graph_from_mesh(coordinates, faces)
 
     # Find the shortest path
     path = nx.shortest_path(G, source=source_index, target=target_index)
 
     return path
+
