@@ -9,7 +9,9 @@ Generates SVG with sulci from subject surfaces.
 import shutil
 import numpy as np
 import cortex
-from cortex import svgoverlay, polyutils
+
+#RS edited because it wasn't importing!
+#from cortex import svgoverlay, polyutils
 from scipy import ndimage, sparse
 from skimage import morphology
 from skimage.measure import approximate_polygon
