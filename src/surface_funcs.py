@@ -29,6 +29,7 @@ from src.utility_funcs import mris_convert_command
 
 # Meshes
 import igl
+import networkx as nx
 #import meshplot 
 from src.freesurfer_utils import *
 
@@ -315,38 +316,6 @@ class ScalpelSurface:
 
         return boundary_dict
     
-    def make_ROI_cut(self, anterior_label, posterior_label, inferior_label, superior_label, ROI_name='', hemi=''):
-        # Makes label of entire ROI between boundary vertices
-        boundary_verts = self.get_boundary(hemi=hemi, anterior_label=anterior_label, posterior_label=posterior_label, inferior_label=inferior_label, superior_label=superior_label)
-        
-        for i, key in enumerate(boundary_verts.keys()):
-            direction_sets = boundary_verts[key]
-            
-
-
-        # Gets rounded bins for each axis
-        rounded_anterior = np.round(boundary_verts['anterior'][1][:, 1], decimals=1)
-        rounded_posterior = np.round(boundary_verts['posterior'][1][:, 1], decimals=1)
-        rounded_inferior = np.round(boundary_verts['inferior'][1][:, 2], decimals=1)
-        rounded_superior = np.round(boundary_verts['superior'][1][:, 2], decimals=1)
-        print(boundary_verts)
-
-        cut_roi_coords  = []
-        cut_roi_vert_idx = []
-        # get vertex indices for all within ROI
-        for hemi in self.cortex:
-            hemi_cortex_idx = hemi[0]
-            hemi_cortex_coords = hemi[1]
-            for point in hemi_cortex_coords:
-                point_rounded_ant_post = np.round(point[1], decimals=1)
-                point_rounded_inf_sup = np.round(point[2], decimals=1)
-                # find nearest point in rounded array
-                
-
-                # add all points within boundaries to cut_roi lists
-
-                # draw geodesic path
-                
 
 
 
@@ -554,7 +523,7 @@ def mesh_to_adjacency(all_faces, all_points):
 
     return adjacency
 
-def adjacenct_nodes(adjacency_matrix : np.array, vertex : int):
+def adjacent_nodes(adjacency_matrix : np.array, vertex : int):
     """
     Find adjacent nodes to a given vertex
 
@@ -613,35 +582,37 @@ def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.arra
             return first_vert_index 
         
   
-def find_edge_vert(label_verts : np.array, direction : str):
-     """
-     Finds the vertex on the boundary edge in a given direction
+  
+def find_edge_vert(label_RAS: np.array, label_ind: np.array, direction: str):
+    """
+    Finds the vertex on the boundary edge in a given direction
 
-        INPUT:
-        label_verts: np.array - array of vertices in boundary
-        direction: str - direction to search for first point inside boundary
+    INPUT:
+    label_verts: np.array - array of vertices in boundary
+    direction: str - direction to search for first point inside boundary
 
-        OUTPUT:
-        first_vert_index: int - index of first vert inside boundary
-     """
-      if direction == 'anterior':
+    OUTPUT:
+    first_vert_index: int - index of first vert inside boundary
+    """
+    if direction == 'anterior':
         dir_idx = 1
         dir_function = np.max
-    if direction == 'posterior':
+    elif direction == 'posterior':
         dir_idx = 1
         dir_function = np.min
-    if direction == 'inferior':
+    elif direction == 'inferior':
         dir_idx = 2
         dir_function = np.min
-    if direction == 'superior':
+    elif direction == 'superior':
         dir_idx = 2
         dir_function = np.max
 
     first_point = dir_function(label_RAS[:, dir_idx])
-    first_vert_index = np.where(label_RAS[:, dir_idx] == first_point)[0][0]
-    first_RAS = label_RAS[first_vert_index]
-    
-    return np.array([first_vert_index]), np.array([first_RAS])
+    first_RAS = label_RAS[np.where(label_RAS[:, dir_idx] == first_point)]
+    first_vert_index = label_ind[np.where(label_RAS[:, dir_idx] == first_point)]
+
+    return np.array(first_vert_index), np.array(first_RAS)
+
 
 def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
     """
@@ -726,4 +697,78 @@ def find_shortest_path_in_mesh(coordinates, faces, source_index, target_index):
     path = nx.shortest_path(G, source=source_index, target=target_index)
 
     return path
+
+
+def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, hemi: str, all_points: np.array, all_faces: np.array, subjects_dir: str or Path, sub: str):
+    """ 
+    Create an outlined region of cortex, using each of the labels as the boundary in a given direction. Take 4 labels names, hemisphere, and mesh, and create a single label that is the bounded roi.
+
+    INPUT: 
+    anterior: str - name of anterior label
+    posterior: str - name of posterior label
+    superior: str - name of superior label
+    inferior: str - name of inferior label
+    hemi: str - hemisphere of interest
+    all_points: np.array - array of all points in a hemisphere as loaded by nibabel freesurfer.io.read_geometry
+    all_faces: np.array - array of all faces in a hemisphere as loaded by nibabel freesurfer.io.read_geometry
+    subjects_dir: str or Path - path to freesurfer subjects directory
+    sub: str - subject id
+
+    OUTPUT:
+    roi_label_ind: np.array - array of indices of vertices in the bounded roi
+    roi_label_points: np.array - array of points in the bounded roi
+
+    
+    """
+
+
+    labels = {'anterior': [anterior], 'posterior': [posterior], 'superior': [superior], 'inferior': [inferior]}
+
+    for i in labels.keys():
+        labels[i].append(sfu.read_label(f'{subjects_dir}/{sub}/label/{hemi}.{labels[i][0]}.label'))
+
+    edge_points = {}
+
+    ## Get edge points for each boundary label
+    for boundary in labels.keys():
+        if boundary == 'anterior' or boundary == 'posterior':
+            edges = ['superior', 'inferior']
+            label_ind = labels[boundary][1][0]
+            label_RAS = labels[boundary][1][1]
+            label_name = labels[boundary][0]
+            edge_points[f'{boundary}_{label_name}_label_{edges[0]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[0])
+            edge_points[f'{boundary}_{label_name}_label_{edges[1]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[1])
+
+        else:
+            edges = ['anterior', 'posterior']
+            label_ind = labels[boundary][1][0]
+            label_RAS = labels[boundary][1][1]
+            label_name = labels[boundary][0]
+            edge_points[f'{boundary}_{label_name}_label_{edges[0]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[0])
+            edge_points[f'{boundary}_{label_name}_label_{edges[1]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[1])
+
+    ## Get the shortest path between the paired points on the boundary
+    boundary_paths = {}
+
+    for ant_post in ["anterior", "posterior"]:
+        for sup_inf in ["superior", "inferior"]:
+            starting_vertex = edge_points[f"{ant_post}_{labels[ant_post][0]}_label_{sup_inf}_edge"][0][0]
+            target_vertex = edge_points[f"{sup_inf}_{labels[sup_inf][0]}_label_{ant_post}_edge"][0][0]
+
+            path = find_shortest_path_in_mesh(all_points, all_faces, starting_vertex, target_vertex)
+            boundary_faces = get_faces_from_vertices(all_faces, path)
+            boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = path
+            #boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = boundary_faces
+
+    ## Combine all labels and paths into a single label
+    
+    roi_label_ind = np.unique(np.concatenate([labels[i][1][0] for i in labels.keys()]))
+    print(len(roi_label_ind))
+    for i in boundary_paths.keys():
+        print(boundary_paths[i])
+        roi_label_ind = np.unique(np.concatenate([roi_label_ind, boundary_paths[i]], axis=None))
+        print(len(roi_label_ind))
+    roi_label_points = all_points[roi_label_ind]
+    return [roi_label_ind, roi_label_points]
+
 
