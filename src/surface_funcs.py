@@ -285,40 +285,6 @@ class ScalpelSurface:
         """Reads morph data on hemi.surface_type"""
         return read_morph_data(self.subject_filepath / f'surf/{hemi}.{surface_type}')
         
-    
-    def get_boundary(self, hemi, anterior_label, posterior_label, inferior_label, superior_label):
-        """ 
-        Gets edge of labels along anterior, posterior, inferior, superior labels
-
-        Returns dictionary of {direction : [RAS_coordinates, vertex_number] 
-        """
-        anterior_boundary_vertices, anterior_boundary_vertex_num = find_boundary_vertices(subject_filepath=self._subject_filepath, hemi=hemi, boundary_type='anterior', label_name=anterior_label, outlier_corrected=True, decimal_size=1)
-        posterior_boundary_vertices, posterior_boundary_vertex_num = find_boundary_vertices(subject_filepath=self._subject_filepath, hemi=hemi, boundary_type='posterior', label_name=posterior_label, outlier_corrected=True, decimal_size=1)
-        inferior_boundary_vertices, inferior_boundary_vertex_num = find_boundary_vertices(subject_filepath=self._subject_filepath, hemi=hemi, boundary_type='inferior', label_name=inferior_label, outlier_corrected=True, decimal_size=1)
-        superior_boundary_vertices, superior_boundary_vertex_num = find_boundary_vertices(subject_filepath=self._subject_filepath, hemi=hemi, boundary_type='superior', label_name=superior_label, outlier_corrected=True, decimal_size=1)
-
-        boundary_dict = {'anterior' : [anterior_boundary_vertices, anterior_boundary_vertex_num],
-                         'posterior' : [posterior_boundary_vertices, posterior_boundary_vertex_num],
-                         'inferior' : [inferior_boundary_vertices, inferior_boundary_vertex_num ],
-                         'superior' : [superior_boundary_vertices, superior_boundary_vertex_num]}
-        # edge_points = {'anterior_lh' : [np.min, np.max], 'anterior_rh': [np.min, np.max], 
-        #                'posterior_lh' :  } ## TODO finish iding edge points and then get geodesic paths among them
-        
-        # ID hemi
-        if hemi == 'lh':
-            hemi_ind = 0
-        else:
-            hemi_ind = 1
-
-        # geodesic line drawn between vertices TODO
-        # geoalg = geodesic.PyGeodesicAlgorithmExact(self.cortex[hemi_ind])
-
-
-        return boundary_dict
-    
-
-
-
         
 
     def plot_boundary(self, label_name='label', label_filepath='', outlier_corrected_bool=True, boundary_type='anterior', decimal_size=1):
@@ -349,107 +315,6 @@ class ScalpelSurface:
 
 
 
-
-def find_boundary_vertices(subject_filepath, hemi, label_name, boundary_type, outlier_corrected=True, decimal_size=1, outlier_std_threshold=3):
-    """
-    Finds vertices along boundary of given Freesurfer label, as identified by boundary_type.
-
-    Bins all vertices along boundary axis, effectively getting every vertex in a slice rounded to the decimal_size,
-    and returns coordinates and vertex numbers with the minimum or maximum axis value as specified by boundary type.
-
-    INPUT:
-    label_name = string : as it appears in /label/ freesurfer directory ie MCGS for lh.MCGS.label
-    outlier_corrected = boolean; if True removes all vertices if S value is outside of 3 SDs of mean
-    decimal_size = int; determines size of rounding done to bin superior vertices, 1 is suggested
-    outlier_std_threshold= int; allows change of SD multiple for outlier correction
-
-    OUTPUT:
-    boundary_vertex_num = np array; vertex number for each minimum Superior value along superior axis
-    boundary_coords = np array; RAS coordinates for each minimum Superior value along superior axis
-
-
-    Example:
-
-    output_vertex_number, output_vertex_coords = find_boundary_vertices(subject_filepath='~/subjects/100206/', hemi='lh', label_name='MCGS', boundary_type='anterior')
-
-
-    """
-    if boundary_type == 'anterior' or boundary_type == 'posterior':
-      # orthogonal measure index is the index along which we are trying to find min values i.e. A for S
-      # finding minimum values on boundary_type axis along orthogonal axis
-      measure_idx = 1
-      orthogonal_measure_idx = 2
-
-    if boundary_type == 'inferior' or boundary_type == 'superior':
-      measure_idx = 2
-      orthogonal_measure_idx = 1
-    
-    label_data = read_label(subject_filepath / f"label/{hemi}.{label_name}.label")
-
-    vertex_num = label_data[0]
-    ras_coords = label_data[1]
-
-    r_data = np.array([ras[0] for ras in ras_coords])
-    a_data = np.array([ras[1] for ras in ras_coords])
-    s_data = np.array([ras[2] for ras in ras_coords])
-    
-    all_data = [r_data, a_data, s_data]
-    measure_data = all_data[measure_idx]
-    orthogonal_data = all_data[orthogonal_measure_idx]
-    
-    
-    boundary_coords = []
-    boundary_vertex_num = []
-    rounded_orthogonal = np.round(orthogonal_data, decimals=decimal_size)
-
-  # for each rounded A value, find the vertex with the lowest S value
-  # add vertex to posterior boundary
-
-    for orthogonal_edge in np.unique(rounded_orthogonal):
-      # get all vertices with shared orthogonal coordinate
-      column_idx = np.where(rounded_orthogonal == orthogonal_edge)[0]
-
-      # find minimum coordinate from that column of points
-      if boundary_type == 'anterior' or boundary_type == 'inferior':
-        min_val = np.amin(measure_data[column_idx])
-        # be sure idx is drawn from original column idxes
-        all_min_idx = np.where(measure_data == min_val)[0]
-        column_min_idx = np.intersect1d(all_min_idx, column_idx)
-        # add boundary and vertex to list
-        boundary_coords.append(list(ras_coords[column_min_idx][0]))
-        boundary_vertex_num.append(vertex_num[column_min_idx][0])
-        
-      else:
-        max_val = np.amax(measure_data[column_idx])
-        # be sure idx is drawn from original column idxes
-        all_max_idx = np.where(measure_data == max_val)[0]
-        column_max_idx = np.intersect1d(all_max_idx, column_idx)
-        # add posterior boundary and vertex to list
-        boundary_coords.append(list(ras_coords[column_max_idx][0]))
-        boundary_vertex_num.append(vertex_num[column_max_idx][0])
-      
-
-    mean_boundary_coord = np.mean([i[measure_idx] for i in boundary_coords])
-    std_boundary_coord = np.std([i[measure_idx] for i in boundary_coords])
-    
-    # Keep coordinate if coordinate is within 3 stds of mean 
-    if outlier_corrected == True:
-      boundary_coords_outlier = []
-      boundary_vertex_num_outlier = []
-      for i, coord_vert in enumerate(boundary_coords):
-          if coord_vert[measure_idx] > (mean_boundary_coord - decimal_size * std_boundary_coord) and coord_vert[measure_idx] < (mean_boundary_coord + decimal_size * std_boundary_coord): 
-            boundary_coords_outlier.append(boundary_coords[i])
-            boundary_vertex_num_outlier.append(boundary_vertex_num[i])
-          else:
-            pass
-      return np.array(boundary_vertex_num_outlier), np.array(boundary_coords_outlier)
-    else: 
-      pass
-#     for vertex in ras_coords:
-      return np.array(boundary_vertex_num), np.array(boundary_coords)
-    
-
-
 def get_faces_from_vertices(faces : np.array, label_ind : np.array):
     """
     Takes a list of faces and label indices
@@ -469,27 +334,26 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array):
                 all_label_faces.append(list(face))
     return np.array(all_label_faces)
 
-
-def get_boundary_faces(all_faces : np.array, label_ind : np.array):
+def find_label_boundary_vertices(label_faces):
     """
-    For a given label, find the faces that are on the boundary of the label by finding vertices
-    that only appear twice in the array of faces (all interior vertices will appear 3 or more times)
+    Find the boundary edges of a label
 
     INPUT:
-        all_faces : np.array - array of faces from the mesh
-        label_ind : np.array - array of vertices that are in the label, first column in freesurfer .label file
-    OUTPUT:
-        boundary_faces : np.array - array of faces that are on the boundary of the label
-    """
-    # Find the unique faces of a label
-    faces_in_label = get_faces_from_vertices(all_faces, label_ind)
-    unique_entry, count = np.unique(faces_in_label, return_counts=True)
-    # Get the nodes that only appear once
-    boundary_nodes = unique_entry[count <= 6]
-    # Get the faces that include the boundary nodes
-    boundary_faces = get_faces_from_vertices(all_faces, boundary_nodes)
-    return boundary_faces
+    label_faces: np.array - array of faces in a label
 
+    OUTPUT:
+    boundary_edges: np.array - array of boundary edges in a label
+    """
+    from collections import Counter
+    edges = Counter()
+    for face in label_faces:
+    
+        edges.update([tuple(sorted([face[i], face[j]])) for i in range(3) for j in range(i + 1, 3)])
+
+    
+    boundary_edges = [edge for edge, count in edges.items() if count == 1]
+
+    return np.unique(boundary_edges)
 
 
 
@@ -557,7 +421,7 @@ def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.arra
         """
 
         ## Recursively check for first point anterior to boundary
-        adjacent_points = adjacenct_nodes(adjacency_matrix, vert)
+        adjacent_points = adjacent_nodes(adjacency_matrix, vert)
 
         if direction == 'anterior':
             dir_idx = 1
@@ -583,7 +447,7 @@ def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.arra
         
   
   
-def find_edge_vert(label_RAS: np.array, label_ind: np.array, direction: str):
+def find_edge_vert(label_RAS: np.array, label_ind: np.array, direction: str, hemi: str):
     """
     Finds the vertex on the boundary edge in a given direction
 
@@ -605,6 +469,18 @@ def find_edge_vert(label_RAS: np.array, label_ind: np.array, direction: str):
         dir_function = np.min
     elif direction == 'superior':
         dir_idx = 2
+        dir_function = np.max
+    elif direction == 'medial' and hemi == 'lh':
+        dir_idx = 0
+        dir_function = np.max
+    elif direction == 'lateral' and hemi == 'lh':
+        dir_idx = 0
+        dir_function = np.min
+    elif direction == 'medial' and hemi == 'rh':
+        dir_idx = 0
+        dir_function = np.min
+    elif direction == 'later' and hemi == 'rh':
+        dir_idx = 0
         dir_function = np.max
 
     first_point = dir_function(label_RAS[:, dir_idx])
@@ -665,7 +541,7 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
     return label_points
 
 
-def get_label_subsets(label_faces: np.array) -> list:
+def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
     from scipy.cluster.hierarchy import DisjointSet
 
     dj_set = DisjointSet(np.unique(label_faces))
@@ -674,7 +550,7 @@ def get_label_subsets(label_faces: np.array) -> list:
         dj_set.merge(triangular_face[0], triangular_face[1])
         dj_set.merge(triangular_face[0], triangular_face[2])
 
-    dj_set = [list(face) for face in label_faces if face[0] or face[1] or face[2] in dj_set.subsets()]
+    dj_set = [get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
     return dj_set
 
 def create_graph_from_mesh(coordinates, faces):
@@ -718,14 +594,27 @@ def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, he
     roi_label_ind: np.array - array of indices of vertices in the bounded roi
     roi_label_points: np.array - array of points in the bounded roi
 
+    TODO
+    - fractionated sulci
+    - angle of direction
+    - different path length algorithms
+    - maybe using only boundary vertices to create a larger ROI for a given portion of the brain
+    - splitting a region 
+
     
     """
 
 
     labels = {'anterior': [anterior], 'posterior': [posterior], 'superior': [superior], 'inferior': [inferior]}
 
+    inflated_surface = nb.freesurfer.io.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
+
     for i in labels.keys():
-        labels[i].append(sfu.read_label(f'{subjects_dir}/{sub}/label/{hemi}.{labels[i][0]}.label'))
+        raw_label = read_label(f'{subjects_dir}/{sub}/label/{hemi}.{labels[i][0]}.label')
+        
+        inflated_RAS = np.array(inflated_surface[0][raw_label[0]])
+
+        labels[i].append((raw_label[0], inflated_RAS))
 
     edge_points = {}
 

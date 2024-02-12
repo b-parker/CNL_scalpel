@@ -693,7 +693,7 @@ def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
 
-    txt_path = data_dir / f"{hemi}.{label_name}.stats.txt"
+    txt_path = data_dir / f"{hemi}.{label_name}.label.stats.txt"
     assert txt_path.exists(), f'the file {txt_path} does not exist.'
 
     all_stats_df = pd.DataFrame(columns=['sub', 'hemi', 'label', 'num_vertices', 'surface_area_mm^2', 'gray_matter_volume_mm^3', 'avg_cortical_thickness', 'avg_cortical_thickness_std', 'rectified_mean_curvature', 'rectified_gaussian_curvature', 'folding_index', 'intrinsic_curvature'])
@@ -715,7 +715,7 @@ def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str
     return all_stats_df
 
 
-def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list, label_name: str or list, hemi: str or list, data_dir_from_subject_fs_dir:str = 'label') -> pd.DataFrame:
+def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list, label_name: str or list, hemi: str or list, data_dir_from_subject_fs_dir:str = 'label', must_exist = True) -> pd.DataFrame:
     """ 
     Takes a subject list, label list, and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 
@@ -750,9 +750,15 @@ def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list,
         for hemi in hemi_list:
             for label in label_name:
                 data_dir = subjects_dir / sub / data_dir_from_subject_fs_dir 
-                assert data_dir.exists(), f"{data_dir} does not exist"
-                new_row = mris_anatomical_stats2DataFrame_row(sub, label, hemi, data_dir)
-                all_stats_df = pd.concat([all_stats_df, new_row], axis = 0)
+                if must_exist:
+                    assert data_dir.exists(), f"{data_dir} does not exist"
+                else:
+                    try:
+                        new_row = mris_anatomical_stats2DataFrame_row(sub, label, hemi, data_dir)
+                        print(new_row)
+                        all_stats_df = pd.concat([all_stats_df, new_row], axis = 0)
+                    except:
+                        pass
 
     return all_stats_df
 
