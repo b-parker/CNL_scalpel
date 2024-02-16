@@ -349,8 +349,6 @@ def find_label_boundary_vertices(label_faces):
     for face in label_faces:
     
         edges.update([tuple(sorted([face[i], face[j]])) for i in range(3) for j in range(i + 1, 3)])
-
-    
     boundary_edges = [edge for edge, count in edges.items() if count == 1]
 
     return np.unique(boundary_edges)
@@ -402,6 +400,52 @@ def adjacent_nodes(adjacency_matrix : np.array, vertex : int):
     vertex_adjacency = adjacency_matrix[vertex]
     adjacenct_vertices = [idx for idx, val in enumerate(vertex_adjacency) if val == 1]
     return adjacenct_vertices
+
+def find_label_boundary(label_faces):
+    """
+    Find the boundary edges of a label
+
+    INPUT:
+    label_faces: np.array - array of faces in a label
+
+    OUTPUT:
+    boundary_edges: np.array - array of boundary edges in a label
+    """
+    from collections import Counter
+    edges = Counter()
+    for face in label_faces:
+    
+        edges.update([tuple(sorted([face[i], face[j]])) for i in range(3) for j in range(i + 1, 3)])
+
+    
+    boundary_edges = [edge for edge, count in edges.items() if count == 1]
+
+    return np.unique(boundary_edges)
+
+def find_endpoint_vertices(path: list, graph: nx.Graph):
+    """
+    Find the vertices within a connected graph which only share a single connections to the rest of the graph. 
+    These vertices are the endpoints of the graph
+
+    INPUT:
+    path: list - list of vertices in the path
+    graph: nx.Graph - graph of the mesh
+
+    OUTPUT:
+    endpoints: list - list of endpoints in the graph
+
+    """
+    path_graph = graph.subgraph(path).copy()
+    vertices = list(path_graph.nodes)
+    edge = []
+    for vertex in vertices:
+        adj_nodes = list(path_graph.adj[vertex])
+        num_connections = len([v for v in adj_nodes if v in vertices])
+        if num_connections == 1:
+            edge.append(vertex)
+
+    return edge
+
 
 
 def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.array, label_verts : np.array, direction : str = 'anterior'):
@@ -542,6 +586,17 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
 
 
 def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
+    """
+    Get the disjoint sets of a label
+
+    INPUT:
+    label_faces: np.array - array of faces in a label
+    all_faces: np.array - array of all faces in a mesh
+
+    OUTPUT:
+    dj_set: list - list of disjoint sets of the label
+    """
+
     from scipy.cluster.hierarchy import DisjointSet
 
     dj_set = DisjointSet(np.unique(label_faces))
@@ -553,7 +608,17 @@ def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
     dj_set = [get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
     return dj_set
 
-def create_graph_from_mesh(coordinates, faces):
+def create_graph_from_mesh(faces):
+    """
+    Create a graph from a mesh
+
+    INPUT:
+    faces: np.array - array of faces in mesh
+
+    OUTPUT:
+    G: nx.Graph - graph of the mesh
+    """
+
     G = nx.Graph()
 
     # Add edges based on faces
@@ -565,9 +630,22 @@ def create_graph_from_mesh(coordinates, faces):
 
     return G
 
-def find_shortest_path_in_mesh(coordinates, faces, source_index, target_index):
+def find_shortest_path_in_mesh(faces, source_index, target_index):
+    """
+    Find the shortest path between two vertices in a mesh
+
+    INPUT:
+    faces: np.array - array of faces in mesh
+    source_index: int - index of source vertex
+    target_index: int - index of target vertex
+
+    OUTPUT:
+    path: list - list of vertices in the shortest path
+
+    """
+    
     # Create a graph from the mesh
-    G = create_graph_from_mesh(coordinates, faces)
+    G = create_graph_from_mesh(faces)
 
     # Find the shortest path
     path = nx.shortest_path(G, source=source_index, target=target_index)
@@ -660,4 +738,320 @@ def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, he
     roi_label_points = all_points[roi_label_ind]
     return [roi_label_ind, roi_label_points]
 
+from src.surface_funcs import get_label_subsets
 
+def sort_sets_by_position(label_sets, points, direction):
+    """
+    Sort a list of faces by their average RAS position, according to direction. If direction is "anterior", 
+    sort by the second element of the RAS point, if "superior", sort by the third element of the RAS point
+
+    INPUT:
+    label_sets: list - list of faces in label
+    points: np.array - array of points in mesh
+    direction: str - direction to sort by
+
+    OUTPUT:
+    sorted_sets: list - list of sorted faces
+   """
+    if direction == 'anterior':
+        dir_idx = 1
+    elif direction == 'superior':
+        dir_idx = 2
+    else:
+        raise ValueError('direction must be anterior or superior')
+    sorted_sets = sorted(label_sets, key=lambda x: np.median(points[x][:,dir_idx]))
+    return sorted_sets
+
+def make_2cut_RAS(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, direction: str, hemi: str, points, faces, subjects_dir, sub):
+    """  
+    Create ROI between two sulci by connecting edges of the sulci according to a direction - anterior-posterior or superior-inferior
+
+    INPUT:
+    label_1: str - name of first label
+    label_2: str - name of second label
+    direction: str - direction to connect edges "anterior-posterior" or "superior-inferior"
+    hemi: str - hemisphere
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    subjects_dir: str - path to subjects directory
+    sub: str - subject ID
+
+    OUTPUT:
+    roi_faces: np.array - array of faces in ROI
+    roi_points: np.array - array of points in ROI
+    """
+
+
+    inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
+    label_1_faces = get_faces_from_vertices(faces, label_1_ind)
+    label_2_faces = get_faces_from_vertices(faces, label_2_ind)
+
+    ### get disjoint sets for each label
+    label_1_subsets = get_label_subsets(label_1_faces)
+    label_2_subsets = get_label_subsets(label_2_faces)
+
+    ## sort subsets by their anterior posterior value from RAS
+    ## return most posterior subset of label 1 and most anterior subset of label 
+    label_1_subsets = sort_sets_by_position(label_1_subsets, points, direction)[-1]
+    label_2_subsets = sort_sets_by_position(label_2_subsets, points, direction)[0]
+
+
+    if direction == 'anterior-posterior':
+        label_1_medial = find_edge_vert(label_1_RAS, label_1_ind, 'medial', hemi)[0][0]
+        label_2_medial = find_edge_vert(label_2_RAS, label_2_ind, 'medial', hemi)[0][0]
+        label_1_lateral = find_edge_vert(label_1_RAS, label_1_ind, 'lateral', hemi)[0][0]
+        label_2_lateral = find_edge_vert(label_2_RAS, label_2_ind, 'lateral', hemi)[0][0]
+
+    elif direction == 'superior-inferior':
+        label_1_anterior = find_edge_vert(label_1_RAS, label_1_ind, 'anterior', hemi)[0][0]
+        label_2_anterior = find_edge_vert(label_2_RAS, label_2_ind, 'anterior', hemi)[0][0]
+        label_1_posterior = find_edge_vert(label_1_RAS, label_1_ind, 'posterior', hemi)[0][0]
+        label_2_posterior = find_edge_vert(label_2_RAS, label_2_ind, 'posterior', hemi)[0][0]
+    
+    else:
+        raise ValueError('direction must be anterior-posterior or superior-inferior')
+
+    path1 = find_shortest_path_in_mesh(points, faces, label_1_medial, label_2_medial)
+    path2 = find_shortest_path_in_mesh(points, faces, label_1_lateral, label_2_lateral)
+
+    roi_paths = np.unique(np.concatenate((path1, path2)))
+    roi_ind = np.concatenate((label_1_ind, label_2_ind, roi_paths))
+    roi_RAS = np.concatenate((label_1_RAS, label_2_RAS, points[roi_paths]))
+
+    return roi_ind, roi_RAS
+
+def find_closest_vertices(boundary1: np.array, boundary2: np.array, points, faces, num_vertices: float = .1, path_length: bool = True):
+    """
+    Find the num vertices closest vertices for boundary1 and boundary2
+
+    INPUT:
+    boundary1: np.array - array of boundary vertices
+    boundary2: np.array - array of boundary vertices
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    num_vertices: float - percentage of each boundary to return
+    path_length: bool - if True, use path length instead of euclidean distance
+    
+    OUTPUT:
+    closest_vertices: np.array - array of closest vertices
+    """
+    if path_length:
+        boundary1_closest = []
+        boundary2_closest = []
+        boundary1 = boundary1[::20]
+        boundary2 = boundary2[::10]
+        for i in range(len(boundary1)):
+            for j in range(len(boundary2)):
+                print(str(i) + f"/ {str(len(boundary1))}"), print( str(j)+ f"/ {str(len(boundary2))}")
+                path = find_shortest_path_in_mesh(points, faces, boundary1[i], boundary2[j])
+                boundary1_closest.append(path[0])
+                boundary2_closest.append(path[-1])
+        ## sort boundary1_closest and boundary2_closest by the path length
+        boundary1_closest = np.array(boundary1_closest)
+        boundary2_closest = np.array(boundary2_closest)
+        boundary1_closest = boundary1_closest[np.argsort(boundary1_closest[:,1])]
+        boundary2_closest = boundary2_closest[np.argsort(boundary2_closest[:,1])]
+
+        ## return the len(boundary1) * num_vertices closest vertices and len(boundary2) * num_vertices closest vertices
+        boundary1_closest = boundary1_closest[:int(len(boundary1) * num_vertices)]
+        boundary2_closest = boundary2_closest[:int(len(boundary2) * num_vertices)]
+        return boundary1_closest, boundary2_closest
+    
+    else:
+        boundary1_closest = []
+        boundary2_closest = []
+        for i in range(len(boundary1)):
+            for j in range(len(boundary2)):
+                dist = np.linalg.norm(points[boundary1[i]] - points[boundary2[j]])
+                boundary1_closest.append(dist)
+                boundary2_closest.append(dist)
+        ## sort boundary1_closest and boundary2_closest by the path length
+        boundary1_closest = np.array(boundary1_closest)
+        boundary2_closest = np.array(boundary2_closest)
+        boundary1_closest = boundary1_closest[np.argsort(boundary1_closest[:,1])]
+        boundary2_closest = boundary2_closest[np.argsort(boundary2_closest[:,1])]
+
+        ## return the len(boundary1) * num_vertices closest vertices and len(boundary2) * num_vertices closest vertices
+        boundary1_closest = boundary1_closest[:int(len(boundary1) * num_vertices)]
+        boundary2_closest = boundary2_closest[:int(len(boundary2) * num_vertices)]
+        return boundary1_closest, boundary2_closest
+    
+
+
+
+
+############################################################################################################
+############################################################################################################
+############################################################################################################
+
+
+                #   Cluster-based parcellation
+
+
+############################################################################################################
+############################################################################################################
+############################################################################################################
+
+
+from sklearn.cluster import OPTICS
+from sklearn.cluster import DBSCAN
+from sklearn.cluster import KMeans
+from sklearn.cluster import MeanShift
+
+def cluster_label_OPTICS(label_ind, label_RAS, points, faces, min_samples: int = 5, eps: float = 1.5):
+    """
+    Cluster a label using OPTICS clustering
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    label_RAS: np.array - array of RAS coordinates of label
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    min_samples: int - minimum number of samples in a cluster
+    eps: float - maximum distance between two samples for one to be considered in the same cluster
+
+    OUTPUT:
+    clusters: np.array - array of clusters
+    """
+    label_points = points[label_ind]
+    clustering = OPTICS(min_samples=min_samples, eps=eps).fit(label_points)
+    clusters = clustering.labels_
+    return clusters
+
+def cluster_label_DBSCAN(label_ind, label_RAS, points, faces, eps: float = 1.5):
+    """
+    Cluster a label using DBSCAN clustering
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    label_RAS: np.array - array of RAS coordinates of label
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    eps: float - maximum distance between two samples for one to be considered in the same cluster
+
+    OUTPUT:
+    clusters: np.array - array of clusters
+    """
+    label_points = points[label_ind]
+    clustering = DBSCAN(eps=eps).fit(label_points)
+    clusters = clustering.labels_
+    return clusters
+
+def cluster_label_KMeans(label_ind, label_RAS, points, faces, n_clusters: int = 2):
+    """
+    Cluster a label using KMeans clustering
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    label_RAS: np.array - array of RAS coordinates of label
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    n_clusters: int - number of clusters
+
+    OUTPUT:
+    clusters: np.array - array of clusters
+    """
+    label_points = points[label_ind]
+    clustering = KMeans(n_clusters=n_clusters, n_init='auto').fit(label_points)
+    clusters = clustering.labels_
+    return clusters
+
+def cluster_label_mean_shift(label_ind, label_RAS, points, faces, bandwidth: float = 1.5):
+    """
+    Cluster a label using mean shift clustering
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    label_RAS: np.array - array of RAS coordinates of label
+    points: np.array - array of points in mesh
+    faces: np.array - array of faces in mesh
+    bandwidth: float - bandwidth to use for mean shift clustering
+
+    OUTPUT:
+    clusters: np.array - array of clusters
+    """
+    label_points = points[label_ind]
+    clustering = MeanShift(bandwidth=bandwidth).fit(label_points)
+    clusters = clustering.labels_
+    return clusters
+
+## in cluster_kmeans, separate the clusters based on whether they are in label_1 or label_2
+
+def separate_clusters(cluster_labels, label_1_ind, label_2_ind, combined_labels):
+    """
+    Separate clusters based on whether they are in label_1 or label_2
+
+    INPUT:
+    cluster_labels: np.array - array of cluster labels
+    label_1_ind: np.array - array of indices of label_1
+    label_2_ind: np.array - array of indices of label_2
+    combined_labels: np.array - array of indices of label_1 and label_2
+
+    OUTPUT:
+    label_1_clusters: np.array - array of cluster labels for label_1
+    label_2_clusters: np.array - array of cluster labels for label_2
+    """
+    label_1_clusters = cluster_labels[np.isin(combined_labels, label_1_ind)]
+    label_2_clusters = cluster_labels[np.isin(combined_labels, label_2_ind)]
+    return label_1_clusters, label_2_clusters
+
+
+def find_closest_clusters(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, label_1_clusters, label_2_clusters, sub, subjects_dir, hemi, num_clusters: int = 1):
+    """
+    Among 2 labels, find the num_clusters closest clusters in each label according to the average path length between the 
+    centroids of the cluster on the triangular mesh
+
+    INPUT:
+    label_1_RAS: np.array - array of RAS coordinates of label_1
+    label_1_ind: np.array - array of indices of label_1
+    label_2_RAS: np.array - array of RAS coordinates of label_2
+    label_2_ind: np.array - array of indices of label_2
+    label_1_clusters: np.array - array of cluster labels for label_1
+    label_2_clusters: np.array - array of cluster labels for label_2
+    num_clusters: int - number of clusters to return
+
+    OUTPUT:
+    closest_clusters: np.array - array of closest clusters
+    """
+    unique_clusters_1 = np.unique(label_1_clusters)
+    unique_clusters_2 = np.unique(label_2_clusters)
+    closest_clusters = []
+    inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
+    for cluster1 in unique_clusters_1:
+        for cluster2 in unique_clusters_2:
+            cluster1_ind = label_1_ind[label_1_clusters == cluster1]
+            cluster2_ind = label_2_ind[label_2_clusters == cluster2]
+            cluster1_points = inflated_surface[0][cluster1_ind]
+            cluster2_points = inflated_surface[0][cluster2_ind]
+            dist = np.linalg.norm(np.mean(cluster1_points, axis=0) - np.mean(cluster2_points, axis=0))
+            
+            closest_clusters.append((cluster1, cluster2, dist))
+    closest_clusters = np.array(closest_clusters)
+    closest_clusters = closest_clusters[np.argsort(closest_clusters[:,2])]
+    return closest_clusters[:num_clusters]
+
+
+
+def plot_label_clusters(label_ind, clusters, subjects_dir, sub, hemi):
+    """ 
+    Plot the clustered label_RAS by cluster in interactive 3D
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    clusters: np.array - array of clusters
+    subjects_dir: str - path to subjects directory
+    sub: str - subject ID
+    hemi: str - hemisphere
+
+    OUTPUT:
+    plots the clusters
+    """ 
+    inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
+    inflated_RAS = inflated_surface[0][label_ind]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Specify a valid colormap (e.g., 'viridis', 'tab20', etc.)
+    ax.scatter(inflated_RAS[:, 0], inflated_RAS[:, 1], inflated_RAS[:, 2], c=clusters, cmap='tab20')
+
+    plt.show()
