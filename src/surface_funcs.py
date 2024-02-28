@@ -278,9 +278,6 @@ class ScalpelSurface:
                   read_label(self._subject_filepath / 'label/rh.cortex.label')] # rh.cortex.label
         return cortex
     
-    
-
-
     def get_surface(self, surface_type, hemi):
         """Reads morph data on hemi.surface_type"""
         return read_morph_data(self.subject_filepath / f'surf/{hemi}.{surface_type}')
