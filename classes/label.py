@@ -1,5 +1,4 @@
 from functools import cached_property
-
 import numpy as np
 import src.freesurfer_utils as sfu
 import trimesh as tm
@@ -10,16 +9,22 @@ SUBJECTS_DIR = '/Users/megananctil/WeinerLab/subjects'
 
 class Label(object):
     
-    def __init__(self, name, subject, hemi="lh"):
-        
+    def __init__(self, name, subject, from_file=True, hemi="lh", vertex_indexes=None, ras_coords=None):
         # (MA) Not sure if we even want to feed in hemi for label creation if the subject
         # fed in will just restrict it anyway
+        self._subject_dir = f'{SUBJECTS_DIR}/{subject.name}'
         if subject.hemi != hemi:
             raise Exception(f'The loaded subject hemisphere is {subject.hemi}, please specify the correct hemisphere `lh` or `rh` for this label')
+        
         self._name = name
         self._subject = subject
         self._hemi = hemi
-        self._vertex_indexes, self._ras_coords = sfu.read_label(f'{SUBJECTS_DIR}/{subject.name}/label/{hemi}.{name}.label')
+
+        if from_file:
+            self._vertex_indexes, self._ras_coords = sfu.read_label(f'{SUBJECTS_DIR}/{subject.name}/label/{hemi}.{name}.label')
+        else:
+            self._vertex_indexes = vertex_indexes
+            self._ras_coords = ras_coords
             
     @property
     def name(self):
@@ -58,6 +63,51 @@ class Label(object):
     @cached_property
     def curv(self):
         return self._subject.curv
+    
+    def gyrus(self, curv_threshold=0):
+        """
+        Returns all label indices and RAS coordinates for gyrus within the freesurfer label.
+
+        Parameters:
+        - curv_threshold (int, optional): Value for thresholding curvature value. Defaults to 0.
+
+        Returns:
+        - np.array: Numpy array of gyrus indexes.
+        - np.array: Numpy array of gyrus RAS vertices.
+        """
+
+        gyrus_index = []
+        gyrus_RAS = []
+
+        for point, RAS in zip(self._vertex_indexes, self._ras_coords):
+            if self._subject.curv[point] < curv_threshold:
+                gyrus_index.append(point)
+                gyrus_RAS.append(RAS)
+
+        return np.array(gyrus_index), np.array(gyrus_RAS)
+
+    def sulcus(self, curv_threshold=0):
+        """
+        Returns all label indices and RAS coordinates for gyrus within the freesurfer label.
+
+        Parameters:
+        - curv_threshold (int, optional): Value for thresholding curvature value. Defaults to 0.
+
+        Returns:
+        - np.array: Numpy array of gyrus indexes.
+        - np.array: Numpy array of gyrus RAS vertices.
+        """
+
+        gyrus_index = []
+        gyrus_RAS = []
+
+        for point, RAS in zip(self._vertex_indexes, self._ras_coords):
+            if self._subject.curv[point] > curv_threshold:
+                gyrus_index.append(point)
+                gyrus_RAS.append(RAS)
+
+        return np.array(gyrus_index), np.array(gyrus_RAS)
+        
 
 
 def create_label(name, subject, hemi="lh"):

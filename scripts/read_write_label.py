@@ -25,7 +25,7 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
-def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, overwrite: bool = False):
+def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, surface_type: str = 'white', overwrite: bool = False):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -36,6 +36,7 @@ def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, h
     label_name: str - name of label
     hemi: str - hemisphere of label
     subject_dir: str or Path - path to subject directory
+    surface_type: str - surface type which label_RAS come from ['white', 'pial', 'orig']
     
     """
     
@@ -54,7 +55,7 @@ def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, h
     print(f'Writing label {label_filename.name} for {subject_id}')
     
     with open(label_filename.absolute(), 'w') as label_file:
-        label_file.writelines(f'#!ascii label  , from subject {subject_id} vox2ras=TkReg coords=white\n')
+        label_file.writelines(f'#!ascii label  , from subject {subject_id} vox2ras=TkReg coords={surface_type}\n')
         label_file.writelines(f'{label_length}\n')
         for i in range(label_length):
             label_line = f"{label_indexes[i]} {label_RAS[i][0]} {label_RAS[i][1]} {label_RAS[i][2]} 0.0000000000 \n"

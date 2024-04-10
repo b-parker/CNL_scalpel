@@ -326,9 +326,8 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array):
     """
     all_label_faces = []
     for face in faces:
-        for point_index in face:
-            if point_index in label_ind:
-                all_label_faces.append(list(face))
+        if all([point in label_ind for point in face]):
+            all_label_faces.append(face)
     return np.array(all_label_faces)
 
 def find_label_boundary_vertices(label_faces):
@@ -934,7 +933,7 @@ def cluster_label_DBSCAN(label_ind, label_RAS, points, faces, eps: float = 1.5):
     clusters = clustering.labels_
     return clusters
 
-def cluster_label_KMeans(label_ind, label_RAS, points, faces, n_clusters: int = 2):
+def cluster_label_KMeans(label_ind, points, n_clusters: int = 2):
     """
     Cluster a label using KMeans clustering
 
@@ -1052,3 +1051,63 @@ def plot_label_clusters(label_ind, clusters, subjects_dir, sub, hemi):
     ax.scatter(inflated_RAS[:, 0], inflated_RAS[:, 1], inflated_RAS[:, 2], c=clusters, cmap='tab20')
 
     plt.show()
+
+
+
+def find_adjacent_indices(label_ind, faces):
+    """
+    Find all adjacent indices in a label
+
+    INPUT:
+    label_ind: np.array - array of indices of label
+    faces: np.array - array of faces in mesh
+
+    OUTPUT:
+    adj_ind: np.array - array of adjacent indices
+    """
+    adj_ind = np.array([])
+    for ind in label_ind:
+        adj = np.unique(faces[np.where(faces == ind)[0]].flatten())
+        adj_ind = np.append(adj_ind, adj)
+    adj_ind = np.unique(adj_ind)
+    return adj_ind
+
+
+
+def ROI_cut(self, gyrus=True, clustering = 'kmeans', num_clusters = 500):
+    if isinstancel(label1, list):
+        label1_vertex_indexes, label1_ras_coords = [], []
+        for label in label1:
+            if self.subject.labels[label]:
+                label1_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
+                label1_ras_coords.append(self.subject.labels[label].ras_coords)
+            else:
+                self.subject.load_label(label, hemi)
+                label1_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
+                label1_ras_coords.append(self.subject.labels[label].ras_coords)
+    
+    if isinstancel(label2, list):
+        label2_vertex_indexes, label2_ras_coords = [], []
+        for label in label2:
+            if self.subject.labels[label]:
+                label2_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
+                label2_ras_coords.append(self.subject.labels[label].ras_coords)
+            else:
+                self.subject.load_label(label, hemi)
+                label2_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
+                label2_ras_coords.append(self.subject.labels[label].ras_coords)
+
+    if gyrus:
+        inflated_ind, inflated_ras_coords = get_gyrus(self.subject.vertex_indexes, self.subject.ras_coords, self.subject.curv)
+
+    if clustering == 'kmeans':
+        surface_clusters = cluster_label_kmeans(inflated_ind, inflated_ras_coords, self.subject.vertex_indexes, self.subject.faces, n_clusters=num_clusters)
+    
+    
+
+
+    
+    
+
+        
+

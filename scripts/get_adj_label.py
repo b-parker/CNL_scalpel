@@ -131,8 +131,7 @@ if __name__ == '__main__':
     hemi = sys.argv[2]
     subjects_dir = sys.argv[3]
 
-    outdir='~/Desktop/cnl/misc'
-#    outdir = '%s/spatial_autocorrelation/%s'%(os.getcwd(),sub)
+    outdir='~/Desktop/cnl/misc'    
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
