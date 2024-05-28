@@ -1,6 +1,6 @@
 from functools import cached_property
 import numpy as np
-import src.freesurfer_utils as sfu
+import src.utilities.freesurfer_utils as sfu
 import trimesh as tm
 
 
@@ -84,7 +84,7 @@ class Label(object):
                 gyrus_index.append(point)
                 gyrus_RAS.append(RAS)
 
-        return np.array(gyrus_index), np.array(gyrus_RAS)
+        # return np.array(gyrus_index), np.array(gyrus_RAS)              
 
     def sulcus(self, curv_threshold=0):
         """
@@ -98,15 +98,15 @@ class Label(object):
         - np.array: Numpy array of gyrus RAS vertices.
         """
 
-        gyrus_index = []
-        gyrus_RAS = []
+        sulcus_index = []
+        sulcus_RAS = []
 
         for point, RAS in zip(self._vertex_indexes, self._ras_coords):
             if self._subject.curv[point] > curv_threshold:
-                gyrus_index.append(point)
-                gyrus_RAS.append(RAS)
+                sulcus_index.append(point)
+                sulcus_RAS.append(RAS)
 
-        return np.array(gyrus_index), np.array(gyrus_RAS)
+        return np.array(sulcus_index), np.array(sulcus_RAS)
         
 
 

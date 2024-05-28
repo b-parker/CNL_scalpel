@@ -1,5 +1,5 @@
 from pathlib import Path
-from src import freesurfer_utils
+from src.utilities import freesurfer_utils
 
 
 

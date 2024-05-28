@@ -342,7 +342,7 @@ def main():
     outputs np.NaN if sulcus is not present.
     """
     from pathlib import Path
-    from src.freesurfer_utils import get_subjects_list
+    from src.utilities.freesurfer_utils import get_subjects_list
     local_subjects_dir = "/Users/benparker/Desktop/cnl/neurocluster/Urgency/subjects"
     subject_list = get_subjects_list("/Users/benparker/Desktop/cnl/neurocluster/Urgency/subjects/pcc_sub_list.txt", local_subjects_dir)
     print(subject_list)

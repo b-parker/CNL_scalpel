@@ -1,4 +1,4 @@
-import src.freesurfer_utils as fsu
+import src.utilities.freesurfer_utils as fsu
 import os
 def main():
     subjects_dir = "/home/weiner/HCP/subjects"

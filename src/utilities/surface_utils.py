@@ -3,6 +3,7 @@ from pathlib import Path
 import os, sys
 import subprocess as sp
 from functools import partial 
+from time import time
 
 # Data
 import pandas as pd
@@ -25,13 +26,13 @@ from mpl_toolkits import mplot3d
 
 import matplotlib.pyplot as plt
 
-from src.utility_funcs import mris_convert_command
+from src.utilities.utility_funcs import mris_convert_command
 
 # Meshes
-import igl
+import trimesh as tm
 import networkx as nx
 #import meshplot 
-from src.freesurfer_utils import *
+from src.utilities.freesurfer_utils import *
 
 
 
@@ -220,7 +221,7 @@ def getDistMatrix(subjects_dir=str, labels=list, sub=str, hemi=str, savedir=str,
 # Use boundary sulci to capture all vertices in surface between boundaries, and plot
 
 import functools
-from src.utility_funcs import memoize
+from src.utilities.utility_funcs import memoize
 
 class ScalpelSurface:
     """
@@ -312,7 +313,7 @@ class ScalpelSurface:
 
 
 
-def get_faces_from_vertices(faces : np.array, label_ind : np.array):
+def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all : bool = False):
     """
     Takes a list of faces and label indices
     Returns the faces that contain the indices
@@ -325,9 +326,14 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array):
     label_faces: array of faces that contain the points in the label
     """
     all_label_faces = []
-    for face in faces:
-        if all([point in label_ind for point in face]):
-            all_label_faces.append(face)
+    if include_all == False:
+        for face in faces:
+            if all([point in label_ind for point in face]):
+                all_label_faces.append(face)
+    else:
+        for face in faces:
+            if any([point in label_ind for point in face]):
+                all_label_faces.append(face)
     return np.array(all_label_faces)
 
 def find_label_boundary_vertices(label_faces):
@@ -604,6 +610,22 @@ def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
     dj_set = [get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
     return dj_set
 
+
+def make_mesh(inflated_points: np.array, faces: np.array, label_ind: np.array, **kwargs) -> tm.Trimesh:
+    """ 
+    Given a set of indices, construct a mesh of the vertices in the indices along a surface
+
+    INPUT: 
+    faces: np.array - array of faces in mesh
+    label_ind: np.array - array of indices of label
+
+    OUTPUT:
+    label_mesh: tm.Triesh - mesh of label
+    """
+    label_faces = get_faces_from_vertices(faces, label_ind, include_all=True)
+    label_mesh = tm.Trimesh(vertices=inflated_points, faces=label_faces, process=False, face_colors=kwargs['face_colors'])
+    return label_mesh
+
 def create_graph_from_mesh(faces):
     """
     Create a graph from a mesh
@@ -734,7 +756,7 @@ def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, he
     roi_label_points = all_points[roi_label_ind]
     return [roi_label_ind, roi_label_points]
 
-from src.surface_funcs import get_label_subsets
+from src.utilities.surface_utils import get_label_subsets
 
 def sort_sets_by_position(label_sets, points, direction):
     """
@@ -952,7 +974,7 @@ def cluster_label_KMeans(label_ind, points, n_clusters: int = 2):
     clusters = clustering.labels_
     return clusters
 
-def cluster_label_mean_shift(label_ind, label_RAS, points, faces, bandwidth: float = 1.5):
+def cluster_label_mean_shift(label_ind, points, bandwidth: float = 1.5):
     """
     Cluster a label using mean shift clustering
 
@@ -1105,7 +1127,57 @@ def ROI_cut(self, gyrus=True, clustering = 'kmeans', num_clusters = 500):
     
     
 
+############################################################################################################
+############################################################################################################
+############################################################################################################
 
+
+                #   Morphometric Parcellation
+
+
+############################################################################################################
+############################################################################################################
+############################################################################################################
+
+def get_thresholded_curv(curv: np.array, label_ind: np.array, threshold: float, sulcal: bool = True):
+    """
+    Get the vertices of a mesh with curvature above a certain threshold
+
+    INPUT:
+    curv: np.array - array of curvature values (nb.freesurfer.read_morph_data(?h.curv))
+    label_ind: np.array - array of indices of label
+    threshold: float - threshold for curvature
+
+    OUTPUT:
+    thresholded_ind: np.array - array of indices of vertices with curvature above threshold
+    """
+    vertex_num = len(label_ind)
+    threshold_number = vertex_num * threshold
+    sorted_indexes = np.argsort(curv[label_ind])
+    if not sulcal:
+        thresholded_ind = label_ind[sorted_indexes[:int(threshold_number)]]
+    else:
+        thresholded_ind = label_ind[sorted_indexes[-int(threshold_number):]]
+    return thresholded_ind
+
+def get_thresholded_thickness(curv: np.array, label_ind: np.array, threshold: float):
+    """
+    Get the vertices of a mesh with curvature above a certain threshold
+
+    INPUT:
+    curv: np.array - array of curvature values (nb.freesurfer.read_morph_data(?h.curv))
+    label_ind: np.array - array of indices of label
+    threshold: float - threshold for curvature
+
+    OUTPUT:
+    thresholded_ind: np.array - array of indices of vertices with curvature above threshold
+    """
+    vertex_num = len(label_ind)
+    threshold_number = vertex_num * threshold
+    sorted_indexes = np.argsort(curv[label_ind]) 
+
+    thresholded_ind = label_ind[sorted_indexes[-int(threshold_number):]]
+    return thresholded_ind   
     
     
 

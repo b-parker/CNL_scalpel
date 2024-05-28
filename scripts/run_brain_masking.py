@@ -1,5 +1,5 @@
 import src.preprocessing_volumes as ppv
-import src.freesurfer_utils as fsu
+import src.utilities.freesurfer_utils as fsu
 import numpy as np
 import nibabel as nb
 import json
