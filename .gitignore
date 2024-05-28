@@ -2,4 +2,5 @@
 /.DS_Store
 /data/*
 /results/*
+/notebooks/CNL_scalpel_scratch.ipynb
 *~
