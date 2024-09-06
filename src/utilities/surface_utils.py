@@ -4,19 +4,19 @@ import os, sys
 import subprocess as sp
 from functools import partial 
 from time import time
+from typing import List, Dict, Tuple
+
 
 # Data
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import AgglomerativeClustering
 
 # Brain
 import nibabel as nb
 from nibabel.freesurfer.io import read_annot, read_label, read_morph_data, read_geometry
-import cortex
-import src.mesh_laplace_sulci
-
-import gdist
-import surfdist
 import pygeodesic.geodesic as geodesic
 
 # Plotting
@@ -33,6 +33,7 @@ import trimesh as tm
 import networkx as nx
 #import meshplot 
 from src.utilities.freesurfer_utils import *
+from src.utilities import geometry_utils
 
 
 
@@ -102,12 +103,12 @@ def dist_calc_matrix(surf, cortex, label_inds_all):
     
     n_labels = len(labels)
  
-    dist_mat = zeros((n_labels,n_labels))
+    dist_mat = np.zeros((n_labels,n_labels))
 
     
-    for r1 in arange(n_labels):
+    for r1 in np.arange(n_labels):
         #print('r1',r1,label_inds_all[r1])
-        for r2 in arange(n_labels):
+        for r2 in np.arange(n_labels):
             # print('r2',r2,label_inds_all[r2])
             # val1 = gdist.compute_gdist(cortex_vertices, cortex_triangles,
             #                                source_indices = array(label_inds_all[r1]))
@@ -312,29 +313,6 @@ class ScalpelSurface:
         plt.show;
 
 
-
-def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all : bool = False):
-    """
-    Takes a list of faces and label indices
-    Returns the faces that contain the indices
-
-    INPUT:
-    faces: array of faces composed of 3 points
-    label_ind: array of indices of points in the label (first colum of label file; 0 index in read_label)
-
-    OUTPUT:
-    label_faces: array of faces that contain the points in the label
-    """
-    all_label_faces = []
-    if include_all == False:
-        for face in faces:
-            if all([point in label_ind for point in face]):
-                all_label_faces.append(face)
-    else:
-        for face in faces:
-            if any([point in label_ind for point in face]):
-                all_label_faces.append(face)
-    return np.array(all_label_faces)
 
 def find_label_boundary_vertices(label_faces):
     """
@@ -607,24 +585,9 @@ def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
         dj_set.merge(triangular_face[0], triangular_face[1])
         dj_set.merge(triangular_face[0], triangular_face[2])
 
-    dj_set = [get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
+    dj_set = [geometry_utils.get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
     return dj_set
 
-
-def make_mesh(inflated_points: np.array, faces: np.array, label_ind: np.array, **kwargs) -> tm.Trimesh:
-    """ 
-    Given a set of indices, construct a mesh of the vertices in the indices along a surface
-
-    INPUT: 
-    faces: np.array - array of faces in mesh
-    label_ind: np.array - array of indices of label
-
-    OUTPUT:
-    label_mesh: tm.Triesh - mesh of label
-    """
-    label_faces = get_faces_from_vertices(faces, label_ind, include_all=True)
-    label_mesh = tm.Trimesh(vertices=inflated_points, faces=label_faces, process=False, face_colors=kwargs['face_colors'])
-    return label_mesh
 
 def create_graph_from_mesh(faces):
     """
@@ -741,7 +704,7 @@ def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, he
             target_vertex = edge_points[f"{sup_inf}_{labels[sup_inf][0]}_label_{ant_post}_edge"][0][0]
 
             path = find_shortest_path_in_mesh(all_points, all_faces, starting_vertex, target_vertex)
-            boundary_faces = get_faces_from_vertices(all_faces, path)
+            boundary_faces = geometry_utils.get_faces_from_vertices(all_faces, path)
             boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = path
             #boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = boundary_faces
 
@@ -801,8 +764,8 @@ def make_2cut_RAS(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, direction:
 
 
     inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
-    label_1_faces = get_faces_from_vertices(faces, label_1_ind)
-    label_2_faces = get_faces_from_vertices(faces, label_2_ind)
+    label_1_faces = geometry_utils.get_faces_from_vertices(faces, label_1_ind)
+    label_2_faces = geometry_utils.get_faces_from_vertices(faces, label_2_ind)
 
     ### get disjoint sets for each label
     label_1_subsets = get_label_subsets(label_1_faces)
@@ -1125,6 +1088,67 @@ def ROI_cut(self, gyrus=True, clustering = 'kmeans', num_clusters = 500):
     if clustering == 'kmeans':
         surface_clusters = cluster_label_kmeans(inflated_ind, inflated_ras_coords, self.subject.vertex_indexes, self.subject.faces, n_clusters=num_clusters)
     
+
+### combine labels
+
+def combine_labels(subject: "ScalpelSubject", labels: List[str], save_to_subject: bool = False):
+    """ 
+    Combine labels into a single label
+
+    INPUT:
+    subject: ScalpelSubject - subject object
+    labels: List[str] - list of labels to combine
+
+    OUTPUT:
+    combined_label_ind: np.array - array of indices of combined label
+    combined_label_RAS: np.array - array of RAS coordinates of combined label
+    
+    """
+    combined_label_ind = np.hstack(([subject.labels[label][0] for label in labels]))
+    combined_label_RAS = subject.ras_coords[combined_label_ind]
+    if save_to_subject:
+        subject.labels[f'combined_{"-".join(labels)}'] = [combined_label_ind, combined_label_RAS]
+    return combined_label_ind, combined_label_RAS
+
+### PCA
+def pca_label(subject: "ScalpelSubject", labels: List[str], n_components: int = 2):
+    ## PCA on these labels
+    # Step 1: Standardize the data
+    scaler = StandardScaler()
+    label_12_faces = geometry_utils.get_faces_from_vertices(subject.faces, subject.labels[combined_label][0])
+    label_12_boundary = find_label_boundary(label_12_faces)
+    label_12_boundary_RAS = subject.ras_coords[label_12_boundary]
+    points_scaled = scaler.fit_transform(label_12_boundary_RAS)
+
+    # Step 2: Apply PCA
+    pca = PCA(n_components=2)  
+    points_pca = pca.fit_transform(points_scaled)
+
+    points_for_clustering = points_pca[:, 0].reshape(-1, 1)
+    label1_points = points_for_clustering[np.isin(label_12_boundary, subject.labels['IPS'][0])]
+    label2_points = points_for_clustering[np.isin(label_12_boundary, subject.labels['combined_i'][0])]
+
+    Ag_clust_1 = AgglomerativeClustering(n_clusters=2).fit_predict(label1_points)
+    Ag_clust_2 = AgglomerativeClustering(n_clusters=3).fit_predict(label2_points)
+    clusters2_adjusted = Ag_clust_2 + 5
+    Ag_clust_3 = AgglomerativeClustering(n_clusters=5).fit_predict(points_for_clustering)
+
+
+
+
+### Cluster
+
+### Get unique clusters
+
+### Find closest clusters
+
+### Find gyral neighbors of closest clusters
+
+### Cluster gyrus
+
+### Intersect gyral neighbors and cluster gyrus
+
+
     
 
 ############################################################################################################

@@ -2,7 +2,7 @@
 from typing import List
 import numpy as np
 import trimesh as tm
-from src.utilities import surface_utils
+from src.utilities import geometry_utils
 
 # Define a dictionary of default colors
 DEFAULT_COLORS = {
@@ -65,7 +65,7 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
         label_ind = labels[label_name][0]
 
     face_colors = np.array(face_colors).astype(int)
-    label_mesh = surface_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
+    label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
     apply_rotation(label_mesh, view, hemi)
     scene.add_geometry(label_mesh, geom_name=label_name)
     return scene.show()
