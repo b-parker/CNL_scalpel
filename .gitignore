@@ -3,4 +3,5 @@
 /data/*
 /results/*
 /notebooks/*scratch*
-*~
+*~*.pyc
+__pycache__/
