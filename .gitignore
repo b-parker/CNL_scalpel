@@ -1,7 +1,25 @@
-\#*\#
-/.DS_Store
-/data/*
-/results/*
-/notebooks/*.ipynb
-*~*.pyc
+# macOS system files
+.DS_Store
+
+# Data and results directories
+/data/
+/results/
+
+# Jupyter Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Python
 __pycache__/
+*.so
+
+# Virtual environments
+venv/
+*.venv
+env/
+*.env
+
+# IDEs and editors
+.vscode/
+
+
