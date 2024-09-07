@@ -2,6 +2,6 @@
 /.DS_Store
 /data/*
 /results/*
-/notebooks/*scratch*
+/notebooks/*.ipynb
 *~*.pyc
 __pycache__/
