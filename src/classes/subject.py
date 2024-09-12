@@ -328,7 +328,6 @@ class ScalpelSubject(object):
         label2_gyral_clusters = np.unique(self.gyral_clusters[np.isin(self.gyrus[0], label2_gyral_neighbors)])
 
         shared_gyral_clusters = np.intersect1d(label1_gyral_clusters, label2_gyral_clusters)
-        shared_gyral_clusters = shared_gyral_clusters[:5]
         return shared_gyral_clusters
 
     def get_shared_gyral_region(self, shared_gyral_clusters: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
