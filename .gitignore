@@ -6,7 +6,6 @@
 /results/
 
 # Jupyter Notebooks
-*.ipynb
 .ipynb_checkpoints/
 
 # Python
