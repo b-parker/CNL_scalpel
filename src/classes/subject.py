@@ -6,6 +6,7 @@ from functools import cached_property
 from typing import List, Tuple, Union, Callable
 import numpy as np
 import nibabel as nb
+import os
 from collections import defaultdict
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -129,6 +130,21 @@ class ScalpelSubject(object):
             label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
             self._labels[label_name].append(label_idxs)
             self._labels[label_name].append(label_RAS)
+
+    def write_label(self, label_name, label_idxs, label_RAS, surface_type = "inflated", overwrite = False):
+        """
+        Write a label to a file.
+
+        Parameters:
+        - label_name (str): Name of the label.
+        - label_idxs (np.array): Vertex indices of the label.
+        - label_RAS (np.array): RAS coordinates of the label.
+
+        Returns:
+        - None
+        """
+        subject_dir = os.path.dirname(self.subject_fs_path)
+        fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = False)
 
     ############################
     # Visualization Methods

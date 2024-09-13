@@ -576,18 +576,19 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
-def write_label(label_indexes: np.array, label_RAS: np.array, label_name: str, hemi: str, subject_dir: str or Path, surface_type: str, overwrite: bool = False):
+def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str or Path, surface_type: str, overwrite: bool = False):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
     INPUT:
-    _____
-    label_indexes: np.array - numpy array of label indexes from src.read_label()
-    label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
-    label_name: str - name of label
-    hemi: str - hemisphere of label
-    subject_dir: str or Path - path to subject directory
-    surface_type: str - surface type of label_RAS space ['white', 'pial', 'inflated', 'sphere']
+    label_name: str - name of label to be written
+    label_indexes: np.array - numpy array of label indexes
+    label_RAS: np.array - numpy array of label RAS coordinates
+    hemi: str - hemisphere
+    subject_dir: str or Path - subject directory
+    surface_type: str - surface type for label
+    overwrite: bool - overwrite existing label file
+
     
     """
     
