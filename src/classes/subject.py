@@ -1,5 +1,5 @@
 
-SUBJECTS_DIR = '/Users/sathishkumar/Desktop/lab_stuff_local.nosync'
+SUBJECTS_DIR = '/home/jesse/neurocluster/bparker/OTSgaps_for_Ben'
 
 from functools import cached_property
 from typing import List, Tuple, Union, Callable
@@ -147,7 +147,7 @@ class ScalpelSubject(object):
         - None
         """
         subject_dir = os.path.dirname(self.subject_fs_path)
-        fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = False)
+        fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = True)
 
     def write_label_local(self, label_name, label_idxs, label_RAS, subject_dir, sub, surface_type = "inflated", overwrite = False):
         """
