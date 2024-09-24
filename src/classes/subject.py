@@ -1,6 +1,5 @@
 
-SUBJECTS_DIR = '/Users/benparker/Desktop/cnl/subjects'
-
+SUBJECTS_DIR = '/Users/sathishkumar/Desktop/lab_stuff_local.nosync'
 
 from functools import cached_property
 from typing import List, Tuple, Union, Callable
@@ -127,7 +126,11 @@ class ScalpelSubject(object):
             self._labels[label_name].append(label_idxs)
             self._labels[label_name].append(label_RAS)
         else:
-            label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+            ## RS edited this
+            if (self.subject_fs_path[-1] != "/"):
+                label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+            else: 
+                label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}label/{self.hemi}.{label_name}.label')
             self._labels[label_name].append(label_idxs)
             self._labels[label_name].append(label_RAS)
 
@@ -144,6 +147,25 @@ class ScalpelSubject(object):
         - None
         """
         subject_dir = os.path.dirname(self.subject_fs_path)
+        fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = False)
+
+    def write_label_local(self, label_name, label_idxs, label_RAS, subject_dir, sub, surface_type = "inflated", overwrite = False):
+        """
+        Write a label to a file.
+
+        Parameters:
+        - label_name (str): Name of the label.
+        - label_idxs (np.array): Vertex indices of the label.
+        - label_RAS (np.array): RAS coordinates of the label.
+        - subjects_dir (str): Path to save labels
+
+        Returns:
+        - None
+        """
+        #subject_dir = os.path.dirname(self.subject_fs_path)
+        sub_path = os.path.join(subject_dir, sub)
+        if not os.path.exists(sub_path):
+            os.mkdir(sub_path)
         fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = False)
 
     ############################

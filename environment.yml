@@ -177,4 +177,4 @@ dependencies:
       - tvb-gdist==2.2
       - wget==3.2
       - widgetsnbextension==4.0.5
-prefix: /Users/benparker/miniconda3/envs/CNL_scalpel
+prefix: /Users/sathishkumar/miniconda3/envs/CNL_scalpel
