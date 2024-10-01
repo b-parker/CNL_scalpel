@@ -1,5 +1,5 @@
 
-SUBJECTS_DIR = '/home/jesse/neurocluster/bparker/OTSgaps_for_Ben'
+SUBJECTS_DIR = '/Users/sathishkumar/Desktop/neurocluster/bparker/OTSgaps_for_Ben'
 
 from functools import cached_property
 from typing import List, Tuple, Union, Callable
