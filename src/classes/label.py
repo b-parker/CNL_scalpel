@@ -30,6 +30,7 @@ class Label(object):
     def name(self):
         return self._name
     
+    
     @property
     def subject(self):
         return self._subject

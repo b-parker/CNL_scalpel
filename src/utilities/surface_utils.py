@@ -762,6 +762,19 @@ def make_2cut_RAS(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, direction:
     roi_points: np.array - array of points in ROI
     """
 
+    result = []
+
+    for i in range(2):
+        if i == 0:
+            label_1_RAS = label_1_RAS
+            label_1_ind = label_1_ind
+            label_2_RAS = label_2_RAS
+            label_2_ind = label_2_ind
+        else:
+            label_1_RAS = label_2_RAS
+            label_1_ind = label_2_ind
+            label_2_RAS = label_1_RAS
+
 
     inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
     label_1_faces = geometry_utils.get_faces_from_vertices(faces, label_1_ind)

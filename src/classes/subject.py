@@ -159,7 +159,7 @@ class ScalpelSubject(object):
 
     def plot_label(self, label_name: str, view='lateral', label_ind=None, face_colors=None):
         if self._scene is None:
-            self.initialize_scene()
+            initialize_scene()
         return plot_label(self._scene, self._ras_coords, self._faces, self._labels, label_name, view, self._hemi, face_colors, label_ind)
 
     def remove_label(self, label_name: str):

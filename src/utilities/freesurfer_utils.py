@@ -12,6 +12,54 @@ from nibabel.freesurfer.io import read_geometry
 import pandas as pd
 from types import NoneType
 
+def freesurfer_label2label(source_subjects_dir:str, source_subject: str, 
+                           target_subject_dir: str, target_subject: str, 
+                           source_label: str, 
+                           target_label_dir: str, target_label:str, 
+                            hemi: str, regmethod: str = 'surface'):
+    '''
+    Runs freesurfer label2label
+
+    INPUT:
+    subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
+    source_subject: str = source subject ID
+    target_subject: str = target subject ID
+    target_subject_dir : str = target subject directory
+    source_label: str = source label name
+    target_label: str = target label name (Just provide label name, final format will be <src_sub>.<hemi>.<label>.label)
+    hemi: str = hemisphere
+    regmethod: str = registration method
+
+    OUTPUT:
+    annot of the location <outdir>/<hemi>.<annot_name>.annot
+
+    '''
+    ## Determine all paths exist
+    assert Path(source_subjects_dir).exists(), f"SUBJECTS_DIR does not exist: {source_subjects_dir}"
+    assert Path(f"{source_subjects_dir}/{source_subject}").exists(), f"Source subject does not exist: {source_subject}"
+    assert Path(f"{target_subject_dir}/{target_subject}").exists(), f"Target subject does not exist: {target_subject}"
+    assert Path(f"{source_subjects_dir}/{source_subject}/label/{hemi}.{source_label}.label").exists(), f"Source label does not exist: {source_label}"
+
+    ## Generate and run command
+    
+    os.environ['SUBJECTS_DIR'] = source_subjects_dir
+    target_label = f"{target_label_dir}/{source_subject}.{hemi}.{target_label}.label"
+
+    cmd = f"mri_label2label\
+        --srcsubject {source_subject}\
+        --srclabel {source_subjects_dir}/{source_subject}/label/{hemi}.{source_label}.label\
+        --trgsubject {target_subject}\
+        --trglabel {target_label}\
+        --hemi {hemi}\
+        --regmethod {regmethod}\
+        "
+    
+    print(f'Calling: {cmd}')
+
+    sp.Popen(shlex.split(cmd)).wait()
+
+    
+
 
 def freesurfer_label2annot(subjects_dir: str, subject_path: str, 
                            label_list: list, hemi: str, ctab_path: str, annot_name: str):
@@ -208,7 +256,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
 
 def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     '''
-    Turns txt subject list into list of filepaths
+    Takes a txt subject list and returns a list of subject directory filepaths
     
     INPUT:
     subjects_list: str = filepath to .txt subject list
@@ -576,7 +624,7 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
-def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str or Path, surface_type: str, overwrite: bool = False):
+def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str or Path, surface_type: str, overwrite: bool = False, **kwargs):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -588,22 +636,35 @@ def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, 
     subject_dir: str or Path - subject directory
     surface_type: str - surface type for label
     overwrite: bool - overwrite existing label file
-
+    custom_label_name: str - custom label name for label file (optional) - shhould be complete string literal of label name in subject label file i.e. 'custom.label.name.label'
+    custom_label_dir: str - custom label directory for label file (optional) - should be complete string literal of label directory in subject label file
     
     """
     
     if isinstance(subject_dir, str):
         subject_dir = Path(subject_dir)
     
-
-    label_filename = subject_dir / 'label' / f'{hemi}.{label_name}.label'
+    ## Check for custom label directory
+    if 'custom_label_dir' in kwargs:
+        label_dir = Path(kwargs['custom_label_dir'])
     
-    if overwrite == False:
+    else:
+        label_dir = subject_dir / 'label'
+
+    ## Check for custom label name
+    if 'custom_label_name' in kwargs:
+        label_name = kwargs['custom_label_name']
+    else:
+        label_name = f"{hemi}.{label_name}.label"
+    
+    ## Create full filename
+    label_filename = label_dir / label_name
+    
+    if not overwrite:
         assert not label_filename.exists(), f"{hemi}.{label_name} already exists for subject at {subject_dir.absolute()}"
 
     subject_id = subject_dir.name
     label_length = label_indexes.shape[0]
-    print(label_length)
 
     print(f'Writing label {label_filename.name} for {subject_id}')
     
@@ -766,7 +827,282 @@ def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list,
     return all_stats_df
 
 
-    
+############################################################################################################
+############################################################################################################
+# Maximum Probability Map
+############################################################################################################
+############################################################################################################
 
+## Project labels to fsaverage
+
+    ## Create probabilty maps for each subject, with that subject held out
+def create_prob_label(project_id: str, fsaverage_projected_label_dir: str, subject_list_path: str, prob_map_label_dir: str, label_name: str, left_out_subject: str,  hemi: str):
+            """ 
+            Creates probabilistic label files for a given label, with a subject held out
+
+            INPUT:
+            project_id: str - unique identifier for project (included in final name of probabilistic label)
+            fsaverage_projected_label_dir: str - filepath to fsaverage projected labels (resulting from freesurfer_label2label)
+            subject_list_path: str - filepath to subject list
+            prob_map_label_dir: str - filepath to probabilistic label directory
+            label_name: str - name of the label
+            left_out_subject: str - subject to be held out
+            hemi: str - hemisphere
+
+            OUTPUT:
+            probabilistic label files for each subject, with the left out subject held out 
+            """
+            ## Load subjects and remove left out subject
+            subjects = np.genfromtxt(subject_list_path) 
+
+            subjects = [i for i in subjects if i != left_out_subject]
+
+            ## Create empty array for vertices of projected labels
+            label_vertices= np.empty(shape=0,dtype=int)
+            label_RAS = np.empty(shape=(0,3),dtype=int)
+
+            prob_label_name = f'{hemi}.{project_id}_PROB_{label_name}.label'
+            prob_label_dir = prob_map_label_dir + f'/{left_out_subject}/'
+            os.makedirs(prob_label_dir, exist_ok=True)
+
+            ## Loop through subjects, load projected labels, and append vertices and RAS coords to arrays
+            for sub in subjects:
+                # Load projected label
+                label_path = fsaverage_projected_label_dir + f'/projected_labels/{label_name}/{sub}.lh.{label_name}.label'
+                vertices, RAS = read_label(label_path)
+                
+                # Append vertices from projected label to array
+                label_vertices = np.append(label_vertices, vertices)
+                label_RAS = np.append(label_RAS,RAS,axis=0)
+                
+                # Update unique vertices and counts
+                unique_vertices, indices_vertices, counts_vertices=np.unique(label_vertices,return_index=True,return_counts=True)
+
+                # index only the RAS coords for unique vertices
+                unique_RAS = label_RAS[indices_vertices,:]
+
+                # get probabilities at each vertex 
+                prob_vertices = (counts_vertices)/len(subjects)
+                
+
+            # make probabilistic label array for label file
+            prob_array = np.zeros(shape=(unique_vertices.shape[0],5),dtype=float)
+            prob_array[:,0] = unique_vertices
+            prob_array[:,1:4] = unique_RAS
+            prob_array[:,-1] = prob_vertices
+
+            # write_label(label_name = label_name, label_indices = unique_vertices, label_RAS = unique_RAS, hemi = hemi, 
+            #             custom_label_dir = prob_map_label_dir, custom_label_name = prob_label_name) 
+            #     # np.savetxt(prob_label_path, prob_array, fmt='%-2d  %2.3f  %2.3f  %2.3f %1.10f')
+
+            # edit first two lines of label file to match Freesurfer
+            f = open(prob_label_path, 'r')
+            edit_f = f.read()
+            f.close()
+            f = open(prob_label_path, 'w')
+            f.write('#!ascii label  , from subject fsaverage vox2ras=TkReg\n{}\n'.format(unique_vertices.shape[0]))
+            f.write(edit_f)
+            f.close()
+
+## Create Maximum Probability Map
+def create_MPM(subjects_dir: str, subjects_list: str, fsaverage_space_labels: str, project_id: str):
+    """
+    """
+
+    prob_maps_vertices = {}
+    prob_maps_RAS = {}
+    prob_maps_stat = {}
+
+    MPM_vertices = {}
+    MPM_RAS = {}
+    MPM_stat = {}
+
+    print('Creating Left Hemisphere MPMs \n\n\n')
+
+    # loop through labels, load prob map and make empty values in MPM dicts
+    for i, middle_frontal_label in enumerate(middle_frontal_label_names):
+        try:
+            #load the prob mpa for the given label
+            vertices, RAS, stat = read_label(fsaverage_space_labels + 'prob_maps/{}/lh.{}_PROB_{}.label'.format(left_out_sub, project_id, middle_frontal_label))
+            prob_maps_vertices[middle_frontal_label] = vertices
+            prob_maps_RAS[middle_frontal_label] = RAS
+            prob_maps_stat[middle_frontal_label] = stat
+
+            MPM_vertices[middle_frontal_label] = np.empty(0)
+            MPM_RAS[middle_frontal_label] =  np.empty(shape=(0,3))
+            MPM_stat[middle_frontal_label] = np.empty(0)
+        except Exception:
+            pass
+            #load lh cortex vertices
+    vertices_lh, RAS_lh = read_label('/home/weiner/data/fsaverage/label/lh.cortex.label')
+        
+
+    # loop through lh cortex vertices
+    for vtx in vertices_lh:
+
+        labels_with_vtx = np.empty(0)
+        vertices_with_vtx = np.empty(0)
+        RAS_with_vtx = np.empty(shape=(0,3))
+        stat_with_vtx = np.empty(0)
+
+        for label_prob, vertices_prob in prob_maps_vertices.items():
+            # if vtx from cortex is in vertices of prob map, add name to list of labels with vtx, add stat value
+            match_idx = np.where(vertices_prob == vtx)
+            # if vertex is in probability map
+            if match_idx[0].shape[0] > 0:
+                # get vertex, RAS, and stat values for the given vertex that is in prob map
+                vertices_prob_idx = match_idx[0][0]
+                labels_with_vtx = np.append(labels_with_vtx, label_prob)
+                vertices_with_vtx = np.append(vertices_with_vtx, vertices_prob[vertices_prob_idx])
+                RAS_with_vtx = np.concatenate((RAS_with_vtx, np.reshape(prob_maps_RAS[label_prob][vertices_prob_idx,:],(1,3))),axis=0)
+                stat_with_vtx = np.append(stat_with_vtx, prob_maps_stat[label_prob][vertices_prob_idx])
+
+        # if vertex was in at least one prob map, get the max value and add to MPM file
+            # also required to have a probability of 0.33 or higher
+        if (labels_with_vtx.shape[0] > 0):
+
+            if (np.max(stat_with_vtx) > 1/3):
+
+                max_idx = np.argmax(stat_with_vtx)
+
+                label_max = labels_with_vtx[max_idx]
+                RAS_max = RAS_with_vtx[max_idx,:]
+                stat_max = stat_with_vtx[max_idx]
+
+                MPM_vertices[label_max] = np.append(MPM_vertices[label_max], vtx)
+                MPM_RAS[label_max] = np.concatenate((MPM_RAS[label_max], np.reshape(RAS_max,(1,3))),axis=0)
+                MPM_stat[label_max] = np.append(MPM_stat[label_max], stat_max)
+
+    # save out each entry MPM as a separate label file in Freesurfer
+
+    for i, middle_frontal_label in enumerate(middle_frontal_label_names):
+
+        MPM_path = fsaverage_space_labels + 'prob_maps/{}/lh.{}_PROB_MPM_{}.label'.format(left_out_sub, project_id, middle_frontal_label)
+        try:
+            # make probabilistic label array for albel file
+            prob_array = np.zeros(shape=(MPM_vertices[middle_frontal_label].shape[0],5),dtype=float)
+            prob_array[:,0] = MPM_vertices[middle_frontal_label]
+            prob_array[:,1:4] = MPM_RAS[middle_frontal_label]
+            prob_array[:,-1] = MPM_stat[middle_frontal_label]
+            np.savetxt(MPM_path, prob_array, fmt='%-2d  %2.3f  %2.3f  %2.3f %1.10f')
+
+            # edit first two lines of label file to match Freesurfer
+            f = open(MPM_path, 'r')
+            edit_f = f.read()
+            f.close()
+            f = open(MPM_path, 'w')
+            f.write('#!ascii label  , from subject fsaverage vox2ras=TkReg\n{}\n'.format(MPM_vertices[middle_frontal_label].shape[0]))
+            f.write(edit_f)
+            f.close()
+        except Exception:
+            pass
+    print('Left Hemisphere PROB MPMs written for ', left_out_sub,' \n\n\n') 
+
+
+    # loop through labels, load prob map and make empty values in MPM dicts
+    for i, middle_frontal_label in enumerate(middle_frontal_label_names):
+        try:
+            #load the prob mpa for the given label
+            vertices, RAS, stat = read_label_stat(fsaverage_space_labels + 'prob_maps/{}/lh.{}_PROB_{}.label'.format(left_out_sub, project_id, middle_frontal_label))
+            prob_maps_vertices[middle_frontal_label] = vertices
+            prob_maps_RAS[middle_frontal_label] = RAS
+            prob_maps_stat[middle_frontal_label] = stat
+
+            MPM_vertices[middle_frontal_label] = np.empty(0)
+            MPM_RAS[middle_frontal_label] =  np.empty(shape=(0,3))
+            MPM_stat[middle_frontal_label] = np.empty(0)
+        except Exception:
+            pass
+            #load lh cortex vertices
+    vertices_lh, RAS_lh = read_label('/home/weiner/data/fsaverage/label/lh.cortex.label')
+        
+
+    # loop through lh cortex vertices
+    for vtx in vertices_lh:
+
+        labels_with_vtx = np.empty(0)
+        vertices_with_vtx = np.empty(0)
+        RAS_with_vtx = np.empty(shape=(0,3))
+        stat_with_vtx = np.empty(0)
+
+        for label_prob, vertices_prob in prob_maps_vertices.items():
+            # if vtx from cortex is in vertices of prob map, add name to list of labels with vtx, add stat value
+            match_idx = np.where(vertices_prob == vtx)
+            # if vertex is in probability map
+            if match_idx[0].shape[0] > 0:
+                # get vertex, RAS, and stat values for the given vertex that is in prob map
+                vertices_prob_idx = match_idx[0][0]
+                labels_with_vtx = np.append(labels_with_vtx, label_prob)
+                vertices_with_vtx = np.append(vertices_with_vtx, vertices_prob[vertices_prob_idx])
+                RAS_with_vtx = np.concatenate((RAS_with_vtx, np.reshape(prob_maps_RAS[label_prob][vertices_prob_idx,:],(1,3))),axis=0)
+                stat_with_vtx = np.append(stat_with_vtx, prob_maps_stat[label_prob][vertices_prob_idx])
+
+        # if vertex was in at least one prob map, get the max value and add to MPM file
+            # also required to have a probability of 0.33 or higher
+        if (labels_with_vtx.shape[0] > 0):
+
+            if (np.max(stat_with_vtx) > 1/3):
+
+                max_idx = np.argmax(stat_with_vtx)
+
+                label_max = labels_with_vtx[max_idx]
+                RAS_max = RAS_with_vtx[max_idx,:]
+                stat_max = stat_with_vtx[max_idx]
+
+                MPM_vertices[label_max] = np.append(MPM_vertices[label_max], vtx)
+                MPM_RAS[label_max] = np.concatenate((MPM_RAS[label_max], np.reshape(RAS_max,(1,3))),axis=0)
+                MPM_stat[label_max] = np.append(MPM_stat[label_max], stat_max)
+
+    # save out each entry MPM as a separate label file in Freesurfer
+
+    for i, middle_frontal_label in enumerate(middle_frontal_label_names):
+
+        MPM_path = fsaverage_space_labels + 'prob_maps/{}/lh.{}_PROB_MPM_{}.label'.format(left_out_sub, project_id, middle_frontal_label)
+        try:
+            # make probabilistic label array for albel file
+            prob_array = np.zeros(shape=(MPM_vertices[middle_frontal_label].shape[0],5),dtype=float)
+            prob_array[:,0] = MPM_vertices[middle_frontal_label]
+            prob_array[:,1:4] = MPM_RAS[middle_frontal_label]
+            prob_array[:,-1] = MPM_stat[middle_frontal_label]
+            np.savetxt(MPM_path, prob_array, fmt='%-2d  %2.3f  %2.3f  %2.3f %1.10f')
+
+            # edit first two lines of label file to match Freesurfer
+            f = open(MPM_path, 'r')
+            edit_f = f.read()
+            f.close()
+            f = open(MPM_path, 'w')
+            f.write('#!ascii label  , from subject fsaverage vox2ras=TkReg\n{}\n'.format(MPM_vertices[middle_frontal_label].shape[0]))
+            f.write(edit_f)
+            f.close()
+        except Exception:
+            pass
+    print('Left Hemisphere PROB MPMs written for ', left_out_sub,' \n\n\n') 
+
+    # save out each entry MPM as a separate binary label file in Freesurfer
+
+    for i, middle_frontal_label in enumerate(middle_frontal_label_names):
+
+        MPM_path = fsaverage_space_labels + 'prob_maps/{}/lh.{}_PROB_MPM_binary_{}.label'.format(left_out_sub, project_id ,middle_frontal_label)
+        try:
+            # make probabilistic label array for albel file
+            prob_array = np.zeros(shape=(MPM_vertices[middle_frontal_label].shape[0],5),dtype=float)
+            prob_array[:,0] = MPM_vertices[middle_frontal_label]
+            prob_array[:,1:4] = MPM_RAS[middle_frontal_label]
+            prob_array[:,-1] = 1
+            np.savetxt(MPM_path, prob_array, fmt='%-2d  %2.3f  %2.3f  %2.3f %1.10f')
+
+            # edit first two lines of label file to match Freesurfer
+            f = open(MPM_path, 'r')
+            edit_f = f.read()
+            f.close()
+            f = open(MPM_path, 'w')
+            f.write('#!ascii label  , from subject fsaverage vox2ras=TkReg\n{}\n'.format(MPM_vertices[middle_frontal_label].shape[0]))
+            f.write(edit_f)
+            f.close()
+
+        except Exception:
+            pass
+        
+    print('Left Hemisphere PROB Binary MPMs written for ', left_out_sub, '\n\n\n')
 
 
