@@ -1,8 +1,6 @@
-#setup.py#
 .DS_Store
 .gitignore
 README.md
-environment.yml
 setup.py
 .vscode/settings.json
 data/.DS_Store
@@ -34,6 +32,7 @@ scripts/get_label_subsets.py
 scripts/get_tar_from_list.py
 scripts/get_threshold_curv.py
 scripts/gyral_gap.py
+scripts/make_MPM_labels.py
 scripts/mm_depth.py
 scripts/pycortex_subject_test.py
 scripts/read_label.py

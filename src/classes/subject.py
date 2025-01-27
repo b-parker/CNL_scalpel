@@ -111,9 +111,9 @@ class ScalpelSubject(object):
         """
         return self._labels
 
-    def load_label(self, label_name, label_idxs=None, label_RAS=None):
+    def load_label(self, label_name, label_idxs=None, label_RAS=None, custom_label_path=None):
         """
-        Load a label into the subject instance. Either loads from file or from input parameters.
+        Load a label into the subject class. Either loads from file or from input parameters.
 
         Parameters:
         - label_name (str): Name of the label.
@@ -123,13 +123,16 @@ class ScalpelSubject(object):
         Returns:
         - None 
         """
-        if label_idxs is not None:
-            self._labels[label_name].append(label_idxs)
-            self._labels[label_name].append(label_RAS)
-        else:
-            label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
-            self._labels[label_name].append(label_idxs)
-            self._labels[label_name].append(label_RAS)
+        if label_idxs is None or label_RAS is None:
+            if custom_label_path is None:
+                label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+    
+            else:
+                label_idxs, label_RAS = fsu.read_label(custom_label_path)
+        self._labels[label_name] = {
+            'idxs': label_idxs,
+            'RAS': label_RAS
+        }
 
     def write_label(self, label_name, label_idxs, label_RAS, surface_type = "inflated", overwrite = False):
         """

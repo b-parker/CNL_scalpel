@@ -17,13 +17,9 @@ from sklearn.cluster import AgglomerativeClustering
 # Brain
 import nibabel as nb
 from nibabel.freesurfer.io import read_annot, read_label, read_morph_data, read_geometry
-import pygeodesic.geodesic as geodesic
+#import pygeodesic.geodesic as geodesic - Only used in dist_calc_matrix
 
-# Plotting
-from mpl_toolkits import mplot3d
-# from mpl_toolkits.mplot3d import Axes3D
-#%matplotlib inline
-
+# Plotting1=--0
 import matplotlib.pyplot as plt
 
 from src.utilities.utility_funcs import mris_convert_command
@@ -48,7 +44,7 @@ from src.utilities import geometry_utils
 #                   Geodesic
 
 
-############################################################################################################
+##########################################################################################################
 ############################################################################################################
 ############################################################################################################
 
@@ -1215,6 +1211,65 @@ def get_thresholded_thickness(curv: np.array, label_ind: np.array, threshold: fl
 
     thresholded_ind = label_ind[sorted_indexes[-int(threshold_number):]]
     return thresholded_ind   
+
+
+def calculate_geometric_centroid(vertices, faces):
+    """
+    Calculate the geometric centroid of a triangular mesh.
+    
+    Parameters:
+        vertices: numpy array of shape (N, 3) containing vertex coordinates
+        faces: numpy array of shape (M, 3) containing vertex indices for each triangle
+    
+    Returns:
+        centroid: numpy array of shape (3,) containing the x,y,z coordinates of the geometric centroid
+    """
+
+    triangle_centroids = np.zeros((len(faces), 3))
+    triangle_areas = np.zeros(len(faces))
+    
+    for i, face in enumerate(faces):
+        # Get vertices for this triangle
+        triangle_vertices = vertices[face]
+        
+        # Calculate triangle centroid (average of three vertices)
+        triangle_centroids[i] = np.mean(triangle_vertices, axis=0)
+        
+        # Calculate triangle area using cross product
+        # Area = 0.5 * ||(v2-v1) × (v3-v1)||
+        v1, v2, v3 = triangle_vertices
+        cross_product = np.cross(v2 - v1, v3 - v1)
+        triangle_areas[i] = 0.5 * np.linalg.norm(cross_product)
+    
+    # Calculate weighted centroid using triangle areas as weights
+    total_area = np.sum(triangle_areas)
+    if total_area == 0:
+        raise ValueError("Total mesh area is zero")
+        
+    centroid = np.sum(triangle_centroids * triangle_areas[:, np.newaxis], axis=0) / total_area
+    
+    return centroid
+
+def find_closest_vertex(centroid, vertices):
+    """
+    Find the vertex closest to the calculated centroid.
+    
+    Parameters:
+        centroid: numpy array of shape (3,) containing centroid coordinates
+        vertices: numpy array of shape (N, 3) containing vertex coordinates
+    
+    Returns:
+        index: index of the closest vertex
+        distance: distance to the closest vertex
+    """
+    distances = np.linalg.norm(vertices - centroid, axis=1)
+    closest_idx = np.argmin(distances)
+    return closest_idx, distances[closest_idx]
+
+
+        
+
+
     
     
 

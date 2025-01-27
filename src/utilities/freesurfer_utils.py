@@ -16,7 +16,10 @@ def freesurfer_label2label(source_subjects_dir:str, source_subject: str,
                            target_subject_dir: str, target_subject: str, 
                            source_label: str, 
                            target_label_dir: str, target_label:str, 
-                            hemi: str, regmethod: str = 'surface'):
+                            hemi: str, 
+                            regmethod: str = 'surface', 
+                            unique_source = False,
+                            source_label_dir: str = None):
     '''
     Runs freesurfer label2label
 
@@ -29,34 +32,40 @@ def freesurfer_label2label(source_subjects_dir:str, source_subject: str,
     target_label: str = target label name (Just provide label name, final format will be <src_sub>.<hemi>.<label>.label)
     hemi: str = hemisphere
     regmethod: str = registration method
+    unique_source: bool = use a unique source label location
 
     OUTPUT:
     annot of the location <outdir>/<hemi>.<annot_name>.annot
 
     '''
-    ## Determine all paths exist
+   # Construct source label path based on whether custom directory provided
+    if source_label_dir:
+        source_label_path = Path(source_label_dir) / f"{source_subject}.{hemi}.{source_label}.label"
+    else:
+        source_label_path = Path(source_subjects_dir) / source_subject / "label" / f"{hemi}.{source_label}.label"
+    
+    # Construct target label path
+    target_label_path = Path(target_label_dir) / f"{source_subject}.{hemi}.{target_label}.label"
+    
+    # Verify paths
     assert Path(source_subjects_dir).exists(), f"SUBJECTS_DIR does not exist: {source_subjects_dir}"
-    assert Path(f"{source_subjects_dir}/{source_subject}").exists(), f"Source subject does not exist: {source_subject}"
-    assert Path(f"{target_subject_dir}/{target_subject}").exists(), f"Target subject does not exist: {target_subject}"
-    assert Path(f"{source_subjects_dir}/{source_subject}/label/{hemi}.{source_label}.label").exists(), f"Source label does not exist: {source_label}"
-
-    ## Generate and run command
+    assert Path(source_subjects_dir, source_subject).exists(), f"Source subject does not exist: {source_subject}"
+    assert Path(target_subject_dir, target_subject).exists(), f"Target subject does not exist: {target_subject}"
+    assert source_label_path.exists(), f"Source label does not exist: {source_label_path}"
     
-    os.environ['SUBJECTS_DIR'] = source_subjects_dir
-    target_label = f"{target_label_dir}/{source_subject}.{hemi}.{target_label}.label"
-
-    cmd = f"mri_label2label\
-        --srcsubject {source_subject}\
-        --srclabel {source_subjects_dir}/{source_subject}/label/{hemi}.{source_label}.label\
-        --trgsubject {target_subject}\
-        --trglabel {target_label}\
-        --hemi {hemi}\
-        --regmethod {regmethod}\
-        "
+    # Set environment and construct command
+    os.environ['SUBJECTS_DIR'] = str(source_subjects_dir)
+    cmd = f"""mri_label2label \
+        --srcsubject fsaverage \
+        --srclabel {source_label_path} \
+        --trgsubject {target_subject} \
+        --trglabel {target_label_path} \
+        --hemi {hemi} \
+        --regmethod {regmethod}
+    """
     
-    print(f'Calling: {cmd}')
-
-    sp.Popen(shlex.split(cmd)).wait()
+    print(f'Executing: {cmd}')
+    sp.run(shlex.split(cmd), check=True)  
 
     
 
