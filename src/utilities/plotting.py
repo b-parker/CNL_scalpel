@@ -62,7 +62,7 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
     if face_colors is None:
         face_colors = np.random.randint(0, 255, 3)
     if label_ind is None and label_name in labels:
-        label_ind = labels[label_name][0]
+        label_ind = labels[label_name]['idxs']
 
     face_colors = np.array(face_colors).astype(int)
     label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)

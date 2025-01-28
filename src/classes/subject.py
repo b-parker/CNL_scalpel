@@ -129,6 +129,7 @@ class ScalpelSubject(object):
     
             else:
                 label_idxs, label_RAS = fsu.read_label(custom_label_path)
+        
         self._labels[label_name] = {
             'idxs': label_idxs,
             'RAS': label_RAS
@@ -409,3 +410,34 @@ class ScalpelSubject(object):
             'shared_gyral_index': shared_index,
             'shared_gyral_ras': shared_ras
         }
+    
+    def label_centroid(self, label_name: str, centroid_face = False) -> np.ndarray:
+        """
+        Compute the centroid of a label.
+
+        Args:
+            label_name (str): Name of the label.
+            centroid_face (bool): If True, return the centroid faces assopciated with the centroid. Defaults to False.
+
+        Returns:
+            np.ndarray: Centroid coordinates.
+        """
+
+        # get the faces associate with the label
+        label_faces_ind = np.where(np.isin(self.faces, self.labels[label_name]['idxs']))[0]
+        label_faces = self.faces[label_faces_ind]
+
+        # Calculate centroid 
+        centroid_ras = surface_utils.calculate_geometric_centroid(self.ras_coords, label_faces)
+        centroid_surface_vertex = surface_utils.find_closest_vertex(centroid_ras, self.ras_coords)[0]
+        centroid_surface_ras = self.ras_coords[centroid_surface_vertex]
+
+        # If getting the faces, return the faces and the centroid
+        if centroid_face:
+            centroid_faces = self.faces[np.where(np.isin(self.faces, centroid_surface_vertex))[0]]
+            centroid_faces_vertices = np.unique(self.faces[centroid_faces])
+            centroid_ras = self.ras_coords[centroid_faces]
+            return centroid_faces_vertices, centroid_ras
+        else:
+            return centroid_surface_vertex, centroid_surface_ras
+
