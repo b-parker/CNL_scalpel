@@ -1,23 +1,34 @@
+from pathlib import Path
 import numpy as np
 
-def find_centroid(label_idx, label_RAS):
-    """
-    Find the centroid of a label
+from src.classes.subject import ScalpelSubject
 
-    INPUT:
-    label_idx: np.array - array of indices of label
-    label_RAS: np.array - array of RAS coordinates of label
+def main() -> None:
+    mount_point = Path('/Users/benparker/Desktop/cnl/neurocluster')
+    subjects_dir = mount_point / 'weiner/HCP/subjects'
+    project_dir = mount_point / 'weiner/HCP/projects/cortical_viz'
+    label_dir =  project_dir / 'prob_maps/ALL_SUBS'
 
-    OUTPUT:
-    centroid_idx: np.array - array idx of centroid of label
-    centroid_RAS: np.array - RAS coordinates of the centroid
-    """
-    R_val = np.mean(label_RAS[:, 0])
-    A_val = np.mean(label_RAS[:, 1])
-    S_val = np.mean(label_RAS[:, 2])
+    subject = 'fsaverage'
 
-    nearest_vertex_idx = np.argmin(np.linalg.norm(label_RAS - [R_val, A_val, S_val], axis=1))
-    centroid_RAS = np.array([label_RAS[nearest_vertex_idx]])
-    centroid_idx = np.array([label_idx[nearest_vertex_idx]])
-    return centroid_idx, centroid_RAS
+    labels_raw = list(label_dir.glob('*.label'))
+    labels = np.unique([label.stem.split('.')[1] for label in labels_raw])
     
+    scal_sub_lh = ScalpelSubject(subject, subjects_dir = subjects_dir, hemi = 'lh')
+    scal_sub_rh = ScalpelSubject(subject, subjects_dir = subjects_dir, hemi = 'rh')
+
+    for label in labels:
+        scal_sub_lh.load_label(label, custom_label_path=label_dir)
+        scal_sub_rh.load_label(label, custom_label_path=label_dir)
+
+        label_lh_centroid_idx, label_lh_centroid_RAS = scal_sub_lh.label_centroid(label, load = True)
+        label_rh_centroid_idx, label_rh_centroid_RAS = scal_sub_rh.label_centroid(label, load = True)
+
+
+        scal_sub_lh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
+        scal_sub_rh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
+
+
+
+if __name__ == '__main__':
+    main()
