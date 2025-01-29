@@ -17,16 +17,19 @@ def main() -> None:
     scal_sub_lh = ScalpelSubject(subject, subjects_dir = subjects_dir, hemi = 'lh')
     scal_sub_rh = ScalpelSubject(subject, subjects_dir = subjects_dir, hemi = 'rh')
 
-    for label in labels:
+    for label in ['MPM_all_subjects_incl_PROB_MPM_pmfs_p']:
         scal_sub_lh.load_label(label, custom_label_path=label_dir)
         scal_sub_rh.load_label(label, custom_label_path=label_dir)
+        try:
+            label_lh_centroid_idx, label_lh_centroid_RAS = scal_sub_lh.label_centroid(label, load = True)
+            label_rh_centroid_idx, label_rh_centroid_RAS = scal_sub_rh.label_centroid(label, load = True)
 
-        label_lh_centroid_idx, label_lh_centroid_RAS = scal_sub_lh.label_centroid(label, load = True)
-        label_rh_centroid_idx, label_rh_centroid_RAS = scal_sub_rh.label_centroid(label, load = True)
 
-
-        scal_sub_lh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
-        scal_sub_rh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
+            scal_sub_lh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
+            scal_sub_rh.write_label(f'{label}_centroid', custom_label_path = label_dir / 'centroids')
+        except ValueError as e:
+            print(f'Error processing label {label}: {e}')
+            continue
 
 
 

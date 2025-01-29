@@ -1,12 +1,9 @@
-
-SUBJECTS_DIR = '/Users/benparker/Desktop/cnl/subjects'
-
-
 from functools import cached_property
 from typing import List, Tuple, Union, Callable
 import numpy as np
 import nibabel as nb
 import os
+from pathlib import Path
 from collections import defaultdict
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -18,12 +15,12 @@ from src.utilities import geometry_utils
 from src.utilities.plotting import initialize_scene, plot, plot_label, remove_label, show_scene
 
 class ScalpelSubject(object):
-    def __init__(self, name, hemi="lh", surface_type="inflated", subjects_dir = SUBJECTS_DIR):
+    def __init__(self, name, hemi, subjects_dir, surface_type="inflated"):
         self._name = name
         self._hemi = hemi
         self._surface_type = surface_type
         self._labels = defaultdict(list)
-        self._subject_fs_path = f'{subjects_dir}/{name}/'
+        self._subject_fs_path = Path(f'{subjects_dir}/{name}/')
         self._scene = None
         self._mesh = {}
     
@@ -128,14 +125,16 @@ class ScalpelSubject(object):
                 label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
     
             else:
-                label_idxs, label_RAS = fsu.read_label(custom_label_path)
+                if isinstance(custom_label_path, str):
+                    custom_label_path = Path(custom_label_path)
+                label_idxs, label_RAS = fsu.read_label(custom_label_path / f'{self.hemi}.{label_name}.label')
         
         self._labels[label_name] = {
             'idxs': label_idxs,
             'RAS': label_RAS
         }
 
-    def write_label(self, label_name, label_idxs, label_RAS, surface_type = "inflated", overwrite = False):
+    def write_label(self, label_name, label_idxs = None, label_RAS = None, surface_type = "inflated", overwrite = False, custom_label_path = None):
         """
         Write a label to a file.
 
@@ -147,8 +146,15 @@ class ScalpelSubject(object):
         Returns:
         - None
         """
-        subject_dir = os.path.dirname(self.subject_fs_path)
-        fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, subject_dir, surface_type, overwrite = False)
+        if label_idxs is None or label_RAS is None:
+            label_idxs = self.labels[label_name]['idxs']
+            label_RAS = self.labels[label_name]['RAS']
+        
+
+        if custom_label_path is None:
+            fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, self.subject_fs_path.stem, self.surface_type, overwrite = overwrite)
+        else:
+            fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, self.subject_fs_path.stem, self.surface_type, overwrite, custom_label_dir = custom_label_path)
 
     ############################
     # Visualization Methods
@@ -175,6 +181,11 @@ class ScalpelSubject(object):
     def create_subject(name, hemi="lh", surface_type="inflated"):
         subject = ScalpelSubject(name, hemi, surface_type)
         return subject
+    
+
+    ############################
+    # Gyral Analysis Methods
+    ############################
 
     def combine_labels(self, label_names: List[str], new_label_name: str) -> None:
         """
@@ -411,7 +422,7 @@ class ScalpelSubject(object):
             'shared_gyral_ras': shared_ras
         }
     
-    def label_centroid(self, label_name: str, centroid_face = False) -> np.ndarray:
+    def label_centroid(self, label_name: str, load = True, centroid_face = False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Compute the centroid of a label.
 
@@ -435,9 +446,17 @@ class ScalpelSubject(object):
         # If getting the faces, return the faces and the centroid
         if centroid_face:
             centroid_faces = self.faces[np.where(np.isin(self.faces, centroid_surface_vertex))[0]]
-            centroid_faces_vertices = np.unique(self.faces[centroid_faces])
-            centroid_ras = self.ras_coords[centroid_faces]
+            centroid_faces_vertices = np.array([np.unique(self.faces[centroid_faces])])
+            centroid_ras = np.array([self.ras_coords[centroid_faces]])
+            if load:
+                self.load_label(f'{label_name}_centroid', label_idxs=centroid_faces_vertices, label_RAS=centroid_ras)
             return centroid_faces_vertices, centroid_ras
         else:
+            centroid_surface_vertex = np.array([centroid_surface_vertex])
+            centroid_surface_ras = np.array([centroid_surface_ras])
+            if load:
+                self.load_label(f'{label_name}_centroid', label_idxs=centroid_surface_vertex, label_RAS=centroid_surface_ras)
             return centroid_surface_vertex, centroid_surface_ras
+        
+
 

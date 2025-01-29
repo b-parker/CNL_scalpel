@@ -10,6 +10,12 @@ from numpy.random import randint
 import numpy as np
 from nibabel.freesurfer.io import read_geometry
 import pandas as pd
+
+try:
+    from types import NoneType
+except ImportError:
+    NoneType = type(None)
+    
 from types import NoneType
 
 def freesurfer_label2label(source_subjects_dir:str, source_subject: str, 
@@ -607,13 +613,13 @@ def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, s
             print(f'\nSubjects not added to {tarfile_name}.\n')
 
 
-def read_label(label_name):
+def read_label(label_name: str | Path) -> tuple:
     """
     Reads a freesurfer-style .label file (5 columns)
     
     Parameters
     ----------
-    label_name: str 
+    label_name: str or Path - name of label file to be read
     
     Returns 
     -------
@@ -633,7 +639,7 @@ def read_label(label_name):
     
     return vertices, RAS_coords
 
-def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str or Path, surface_type: str, overwrite: bool = False, **kwargs):
+def write_label( label_name: str | Path, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str | Path, surface_type: str, overwrite: bool = False, **kwargs):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -655,8 +661,10 @@ def write_label( label_name: str, label_indexes: np.array, label_RAS: np.array, 
     
     ## Check for custom label directory
     if 'custom_label_dir' in kwargs:
-        label_dir = Path(kwargs['custom_label_dir'])
-    
+        if isinstance(kwargs['custom_label_dir'], str):
+            label_dir = Path(kwargs['custom_label_dir'])
+        else:
+            label_dir = kwargs['custom_label_dir']
     else:
         label_dir = subject_dir / 'label'
 

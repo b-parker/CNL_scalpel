@@ -1,1 +1,26 @@
-could not write annot file /home/connectome-raw/100307/T1w/100307/label/rh.aparc_fsav_VTC.annot
+Error processing label MPM_all_subjects_incl_PROB_MPM_sspls_d: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_sspls_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_prculs_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_pmfs_p: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_pmfs_a: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_painfs_d: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_painfs_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_isms: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_icgs_p: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_sspls_d: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_sspls_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_prculs_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_pmfs_p: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_pmfs_a: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_painfs_d: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_painfs_v: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_isms: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_icgs_p: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_aipsJ: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_SLOS2: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_SLOS3: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_binary_SLOS4: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_aipsJ: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_SLOS2: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_SLOS3: Total mesh area is zero
+Error processing label MPM_all_subjects_incl_PROB_MPM_SLOS4: Total mesh area is zero
