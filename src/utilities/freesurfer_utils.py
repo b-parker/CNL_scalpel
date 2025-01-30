@@ -613,7 +613,7 @@ def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, s
             print(f'\nSubjects not added to {tarfile_name}.\n')
 
 
-def read_label(label_name: str | Path) -> tuple:
+def read_label(label_name: str | Path, include_value: bool = False) -> tuple:
     """
     Reads a freesurfer-style .label file (5 columns)
     
@@ -625,6 +625,7 @@ def read_label(label_name: str | Path) -> tuple:
     -------
     vertices: index of the vertex in the label np.array [n_vertices] 
     RAS_coords: columns are the X,Y,Z RAS coords associated with vertex number in the label, np.array [n_vertices, 3] 
+    incude_value: bool - if True, includes the value of the vertex in the label (fifth column in .label file)
     
     """
     
@@ -636,6 +637,10 @@ def read_label(label_name: str | Path) -> tuple:
     RAS_coords[:,0] = df_label.x_ras
     RAS_coords[:,1] = df_label.y_ras
     RAS_coords[:,2] = df_label.z_ras
+
+    if include_value:
+        value = df_label.stat
+        return vertices, RAS_coords, value
     
     return vertices, RAS_coords
 
