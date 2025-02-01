@@ -2,13 +2,15 @@ from functools import cached_property
 from typing import List, Tuple, Union, Callable
 import numpy as np
 import nibabel as nb
-import os
 from pathlib import Path
 from collections import defaultdict
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN
 from scipy.spatial.distance import cdist
+
+from src.classes.label import Label
 from src.utilities import freesurfer_utils as fsu
 from src.utilities import surface_utils
 from src.utilities import geometry_utils
@@ -68,19 +70,19 @@ class ScalpelSubject(object):
         ## Path to subject's freesurfer directory
         return self._subject_fs_path
 
-    @cached_property
-    def mesh(self):
-        gyrus_gray = [250, 250, 250]
-        sulcus_gray = [130, 130, 130]
-        if self.surface_type == 'inflated':
-            print('Building cortical mesh (this may take 1 - 2 minutes)')
-            gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
-            sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
-            self._mesh['gyrus'] = gyrus_mesh
-            self._mesh['sulcus'] = sulcus_mesh
-        else:
-            self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray)
-        return self._mesh
+    # @cached_property
+    # def mesh(self):
+    #     gyrus_gray = [250, 250, 250]
+    #     sulcus_gray = [130, 130, 130]
+    #     if self.surface_type == 'inflated':
+    #         print('Building cortical mesh (this may take 1 - 2 minutes)')
+    #         gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
+    #         sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
+    #         self._mesh['gyrus'] = gyrus_mesh
+    #         self._mesh['sulcus'] = sulcus_mesh
+    #     else:
+    #         self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray)
+    #     return self._mesh
 
     @property
     def curv(self):
@@ -108,7 +110,7 @@ class ScalpelSubject(object):
         """
         return self._labels
 
-    def load_label(self, label_name, label_idxs=None, label_RAS=None, custom_label_path=None, include_value=False):
+    def load_label(self, label_name, label_idxs=None, label_RAS=None, label_stat=None, custom_label_path=None, include_value=False):
         """
         Load a label into the subject class. Either loads from file or from input parameters.
 
@@ -122,46 +124,26 @@ class ScalpelSubject(object):
         """
         if label_idxs is None or label_RAS is None:
             if custom_label_path is None:
-                label_idxs, label_RAS = fsu.read_label(f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+                self._labels[label_name] = Label(label_name, self, self.hemi, custom_label_path = f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
     
             else:
                 if isinstance(custom_label_path, str):
                     custom_label_path = Path(custom_label_path)
-                label_idxs, label_RAS, label_value = fsu.read_label(custom_label_path / f'{self.hemi}.{label_name}.label')
-
-        if include_value:
-            self._labels[label_name] = {
-                'idxs': label_idxs,
-                'RAS': label_RAS,
-                'value': label_value
-            }
+                self._labels[label_name] = Label(label_name, self, self.hemi, custom_label_path)
         else:
-            self._labels[label_name] = {
-                'idxs': label_idxs,
-                'RAS': label_RAS
-            }
-
-    def write_label(self, label_name, label_idxs = None, label_RAS = None, surface_type = "inflated", overwrite = False, custom_label_path = None):
+            self._labels[label_name] = Label(label_name, self, self.hemi, vertex_indexes=label_idxs, ras_coords=label_RAS, stat=label_stat, include_value=include_value)
+    
+    def remove_label(self, label_name):
         """
-        Write a label to a file.
+        Remove a label from the subject class.
 
         Parameters:
         - label_name (str): Name of the label.
-        - label_idxs (np.array): Vertex indices of the label.
-        - label_RAS (np.array): RAS coordinates of the label.
 
         Returns:
         - None
         """
-        if label_idxs is None or label_RAS is None:
-            label_idxs = self.labels[label_name]['idxs']
-            label_RAS = self.labels[label_name]['RAS']
-        
-
-        if custom_label_path is None:
-            fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, self.subject_fs_path.stem, self.surface_type, overwrite = overwrite)
-        else:
-            fsu.write_label(label_name, label_idxs, label_RAS, self.hemi, self.subject_fs_path.stem, self.surface_type, overwrite, custom_label_dir = custom_label_path)
+        self._labels.pop(label_name)
 
     ############################
     # Visualization Methods

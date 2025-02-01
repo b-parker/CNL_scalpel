@@ -1,18 +1,30 @@
 from functools import cached_property
 import numpy as np
 import src.utilities.freesurfer_utils as sfu
+from src.classes.subject import ScalpelSubject
 import trimesh as tm
 
 
-# TODO: move global variable setup somewhere else!
-SUBJECTS_DIR = '/Users/megananctil/WeinerLab/subjects'
-
 class Label(object):
+    """
+    Class for representing a freesurfer label.
     
-    def __init__(self, name, subject, from_file=True, hemi="lh", vertex_indexes=None, ras_coords=None):
-        # (MA) Not sure if we even want to feed in hemi for label creation if the subject
-        # fed in will just restrict it anyway
-        self._subject_dir = f'{SUBJECTS_DIR}/{subject.name}'
+    """
+    
+    def __init__(self, name, subject,  hemi, vertex_indexes=None, ras_coords=None, stat=None, custom_label_path=None):
+        """
+        Constructor for the Label class.
+
+        Parameters:
+        - name (str): Name of the label.
+        - subject (ScalpelSubject): Subject object.
+        - hemi (str): Hemisphere of the label.
+        - from_file (bool, optional): If True, load label from file. Defaults to True.
+        - vertex_indexes (np.array, optional): Numpy array of vertex indexes. Defaults to None.
+        - ras_coords (np.array, optional): Numpy array of RAS coordinates. Defaults to None.
+        - stat (np.array, optional): Numpy array of statistical values. Defaults to None.
+
+        """
         if subject.hemi != hemi:
             raise Exception(f'The loaded subject hemisphere is {subject.hemi}, please specify the correct hemisphere `lh` or `rh` for this label')
         
@@ -20,35 +32,41 @@ class Label(object):
         self._subject = subject
         self._hemi = hemi
 
-        if from_file:
-            self._vertex_indexes, self._ras_coords = sfu.read_label(f'{SUBJECTS_DIR}/{subject.name}/label/{hemi}.{name}.label')
+        if custom_label_path:
+            self._vertex_indexes, self._ras_coords, self._stat = sfu.read_label(custom_label_path, include_stat = True)
         else:
+            if vertex_indexes is None or ras_coords is None:
+                raise Exception('Please provide vertex indexes and RAS coordinates for the label')
             self._vertex_indexes = vertex_indexes
             self._ras_coords = ras_coords
+            self._stat = stat
             
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
     
     
     @property
-    def subject(self):
+    def subject(self) -> ScalpelSubject:
         return self._subject
     
     @property
-    def hemi(self):
+    def hemi(self) -> str:
         return self._subject.hemi
     
     @property
-    def vertex_indexes(self):
+    def vertex_indexes(self) -> np.array:
         return self._vertex_indexes
     
     @property
-    def ras_coords(self):
+    def ras_coords(self) -> np.array:
         return self._ras_coords
+
+    def label_stat(self) -> np.array:
+        return self._stat
     
     @property
-    def faces(self):
+    def faces(self) -> np.array:
         label_faces = []
         for face in self._subject.faces:
             for vertex_index in face:
@@ -58,14 +76,14 @@ class Label(object):
         return np.array(label_faces)
     
     @cached_property
-    def mesh(self):
+    def mesh(self) -> tm.Trimesh:
         return tm.Trimesh(vertices=self.subject.ras_coords, faces=self.faces)
     
     @cached_property
-    def curv(self):
+    def curv(self) -> np.array:
         return self._subject.curv
     
-    def gyrus(self, curv_threshold=0):
+    def gyrus(self, curv_threshold=0) -> np.array:
         """
         Returns all label indices and RAS coordinates for gyrus within the freesurfer label.
 
@@ -87,7 +105,7 @@ class Label(object):
 
         # return np.array(gyrus_index), np.array(gyrus_RAS)              
 
-    def sulcus(self, curv_threshold=0):
+    def sulcus(self, curv_threshold=0) -> np.array:
         """
         Returns all label indices and RAS coordinates for gyrus within the freesurfer label.
 
@@ -108,9 +126,5 @@ class Label(object):
                 sulcus_RAS.append(RAS)
 
         return np.array(sulcus_index), np.array(sulcus_RAS)
-        
-
-
-def create_label(name, subject, hemi="lh"):
-    label = Label(name, subject, hemi)
-    return label
+    
+    
