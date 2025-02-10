@@ -12,21 +12,19 @@ if [[ ! -e $SAVE_LABELS_DIR ]]; then
     mkdir $SAVE_LABELS_DIR; echo 'making dir: ' $SAVE_LABELS_DIR; fi
 
 #labels to be converted
-array1=$(cat /home/weiner/HCP/projects/prob_maps/ALL_SUBS/all_projection_names.txt)
+array1=$(cat /home/weiner/HCP/projects/cortical_viz/prob_maps/ALL_SUBS/all_projection_names.txt)
 
-#label subdirs, if relevant
-#array2[0]='/label_new/' 
-#array2[1]='/label_new/'
+echo "Loaded labels."
 
-LABEL_DIR=/home/weiner/HCP/projects/prob_maps/ALL_SUBS
+LABEL_DIR=/home/weiner/HCP/projects/cortical_viz/prob_maps/ALL_SUBS
 
 #make dir to save vols in (intermediate & final steps), if dne 
-SAVE_VOLS_DIR=$SUBJECTS_DIR/${sub}/label/PMC_MPM_vols_T1_filled/
+SAVE_VOLS_DIR=$SUBJECTS_DIR/${sub}/label/cortical_viz_MPM_vols_T1_filled/
 if [[ ! -e $SAVE_VOLS_DIR ]]; then
-    mkdir $SAVE_VOLS_DIR; echo 'making dir: ' $SAVE_LABELS_DIR; fi
-FINAL_VOLS_DIR=$SUBJECTS_DIR/${sub}/label/PMC_MPM_vols_T1_filled/final/
+    mkdir -p  $SAVE_VOLS_DIR; echo 'making dir: ' $SAVE_LABELS_DIR; fi
+FINAL_VOLS_DIR=$SUBJECTS_DIR/${sub}/label/cortical_viz_MPM_vols_T1_filled/final/
 if [[ ! -e $FINAL_VOLS_DIR ]]; then
-    mkdir $FINAL_VOLS_DIR; echo 'making dir: ' $SAVE_LABELS_DIR; fi
+    mkdir -p  $FINAL_VOLS_DIR; echo 'making dir: ' $SAVE_LABELS_DIR; fi
 
 
 # 1) Convert labels to a vol in the same space as the labels first
@@ -34,11 +32,14 @@ if [[ ! -e $FINAL_VOLS_DIR ]]; then
 for hemi in 'lh' 'rh'; do
   echo $hemi
   for label in ${array1[@]}; do
-    #label_subdir=${array2[$i]}
+    
     label_name=$label
     echo $label_subdir
     echo $label_name
+    echo "Beginning mri_label2vol"
 
+    echo "Label :  $LABEL_DIR/${label_subdir}/${hemi}.${label_name}.label"
+    
     mri_label2vol \
       --label $LABEL_DIR/${label_subdir}/${hemi}.${label_name}.label \
       --subject ${sub} \

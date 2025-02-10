@@ -1,0 +1,7 @@
+SUBJECTS_DIR='/home/weiner/DevProso/subjects'
+SUBJECTS=$(cat $SUBJECTS_DIR/all_subjects.txt)
+
+for sub in $SUBJECTS;
+do
+    echo $sub;
+done
