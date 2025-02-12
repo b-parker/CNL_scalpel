@@ -1,7 +1,6 @@
 from functools import cached_property
 import numpy as np
 import src.utilities.freesurfer_utils as sfu
-from src.classes.subject import ScalpelSubject
 import trimesh as tm
 
 
@@ -11,13 +10,12 @@ class Label(object):
     
     """
     
-    def __init__(self, name, subject,  hemi, vertex_indexes=None, ras_coords=None, stat=None, custom_label_path=None):
+    def __init__(self, name, hemi, vertex_indexes=None, ras_coords=None, stat=None, custom_label_path=None):
         """
         Constructor for the Label class.
 
         Parameters:
         - name (str): Name of the label.
-        - subject (ScalpelSubject): Subject object.
         - hemi (str): Hemisphere of the label.
         - from_file (bool, optional): If True, load label from file. Defaults to True.
         - vertex_indexes (np.array, optional): Numpy array of vertex indexes. Defaults to None.
@@ -25,11 +23,7 @@ class Label(object):
         - stat (np.array, optional): Numpy array of statistical values. Defaults to None.
 
         """
-        if subject.hemi != hemi:
-            raise Exception(f'The loaded subject hemisphere is {subject.hemi}, please specify the correct hemisphere `lh` or `rh` for this label')
-        
         self._name = name
-        self._subject = subject
         self._hemi = hemi
 
         if custom_label_path:
@@ -45,11 +39,6 @@ class Label(object):
     def name(self) -> str:
         return self._name
     
-    
-    @property
-    def subject(self) -> ScalpelSubject:
-        return self._subject
-    
     @property
     def hemi(self) -> str:
         return self._subject.hemi
@@ -62,6 +51,7 @@ class Label(object):
     def ras_coords(self) -> np.array:
         return self._ras_coords
 
+    @property
     def label_stat(self) -> np.array:
         return self._stat
     

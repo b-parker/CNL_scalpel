@@ -70,19 +70,19 @@ class ScalpelSubject(object):
         ## Path to subject's freesurfer directory
         return self._subject_fs_path
 
-    # @cached_property
-    # def mesh(self):
-    #     gyrus_gray = [250, 250, 250]
-    #     sulcus_gray = [130, 130, 130]
-    #     if self.surface_type == 'inflated':
-    #         print('Building cortical mesh (this may take 1 - 2 minutes)')
-    #         gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
-    #         sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
-    #         self._mesh['gyrus'] = gyrus_mesh
-    #         self._mesh['sulcus'] = sulcus_mesh
-    #     else:
-    #         self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray)
-    #     return self._mesh
+    @cached_property
+    def mesh(self):
+        gyrus_gray = [250, 250, 250]
+        sulcus_gray = [130, 130, 130]
+        if self.surface_type == 'inflated':
+            print('Building cortical mesh (this may take 1 - 2 minutes)')
+            gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
+            sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
+            self._mesh['gyrus'] = gyrus_mesh
+            self._mesh['sulcus'] = sulcus_mesh
+        else:
+            self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray)
+        return self._mesh
 
     @property
     def curv(self):
@@ -110,7 +110,7 @@ class ScalpelSubject(object):
         """
         return self._labels
 
-    def load_label(self, label_name, label_idxs=None, label_RAS=None, label_stat=None, custom_label_path=None, include_value=False):
+    def load_label(self, label_name, label_idxs=None, label_RAS=None, label_stat=None, custom_label_path=None):
         """
         Load a label into the subject class. Either loads from file or from input parameters.
 
@@ -124,14 +124,14 @@ class ScalpelSubject(object):
         """
         if label_idxs is None or label_RAS is None:
             if custom_label_path is None:
-                self._labels[label_name] = Label(label_name, self, self.hemi, custom_label_path = f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+                self._labels[label_name] = Label(label_name, self.hemi, custom_label_path = f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
     
             else:
                 if isinstance(custom_label_path, str):
                     custom_label_path = Path(custom_label_path)
-                self._labels[label_name] = Label(label_name, self, self.hemi, custom_label_path)
+                self._labels[label_name] = Label(label_name, hemi = self.hemi, custom_label_path = custom_label_path)
         else:
-            self._labels[label_name] = Label(label_name, self, self.hemi, vertex_indexes=label_idxs, ras_coords=label_RAS, stat=label_stat, include_value=include_value)
+            self._labels[label_name] = Label(label_name, hemi = self.hemi, vertex_indexes = label_idxs, ras_coords = label_RAS, stat = label_stat)
     
     def remove_label(self, label_name):
         """
@@ -180,7 +180,7 @@ class ScalpelSubject(object):
         """
         Combine multiple labels into a single new label.
 
-        Args:
+        Parameters:
             label_names (List[str]): List of label names to combine.
             new_label_name (str): Name for the new combined label.
 
@@ -200,7 +200,7 @@ class ScalpelSubject(object):
         """
         Perform boundary analysis on a label using PCA or direct clustering.
 
-        Args:
+        Parameters:
             label_name (str): Name of the label to analyze.
             method (str): Analysis method ('pca' or 'direct').
             n_components (int): Number of PCA components (ignored if method is 'direct').
@@ -257,7 +257,7 @@ class ScalpelSubject(object):
         """
         Find the closest clusters between two label analysis results.
 
-        Args:
+        Parameters:
             analysis_results1 (dict): Analysis results for the first label.
             analysis_results2 (dict): Analysis results for the second label.
 
@@ -292,7 +292,7 @@ class ScalpelSubject(object):
         """
         Perform clustering on gyral regions.
 
-        Args:
+        Parameters:
             n_clusters (int): Number of clusters to create.
             algorithm (str): Clustering algorithm to use ('kmeans', 'agglomerative', or 'dbscan').
 
@@ -322,7 +322,7 @@ class ScalpelSubject(object):
         """
         Find shared gyral clusters between two labels.
 
-        Args:
+        Parameters:
             label1 (str): Name of the first label.
             label2 (str): Name of the second label.
 
@@ -354,7 +354,7 @@ class ScalpelSubject(object):
         """
         Get the shared gyral region based on shared gyral clusters.
 
-        Args:
+        Parameters:
             shared_gyral_clusters (np.ndarray): Array of shared gyral cluster indices.
 
         Returns:
@@ -370,7 +370,7 @@ class ScalpelSubject(object):
         """
         Find the gyral gap between two labels.
 
-        Args:
+        Parameters:
             label1 (str): Name of the first label.
             label2 (str): Name of the second label.
             method (str): Analysis method ('pca' or 'direct').
@@ -415,7 +415,7 @@ class ScalpelSubject(object):
         """
         Compute the centroid of a label.
 
-        Args:
+        Parameters:
             label_name (str): Name of the label.
             centroid_face (bool): If True, return the centroid faces assopciated with the centroid. Defaults to False.
 
@@ -446,6 +446,39 @@ class ScalpelSubject(object):
             if load:
                 self.load_label(f'{label_name}_centroid', label_idxs=centroid_surface_vertex, label_RAS=centroid_surface_ras)
             return centroid_surface_vertex, centroid_surface_ras
+        
+        
+    def threshold_label(self, label_name, threshold, load_label = False, new_name = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Threshold a label based on a statistical value.
+
+        Parameters:
+            label_name (str): Name of the label.
+            threshold (float): Threshold value.
+            load_label (bool): If True, load the thresholded label. Defaults to False.
+            new_name (str): Name for the thresholded label. Defaults to None.
+        
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray]: Vertex indexes, RAS coordinates, and statistical values of the thresholded label.
+        
+        """
+
+
+        try:
+            thresh_idx = np.argwhere(self.labels[label_name].label_stat > threshold).flatten()
+        except ValueError:
+            print(f"Label {label_name} not found")
+            
+        
+        if load_label:
+            if new_name is None:
+                new_name = f'{label_name}_{threshold}'
+            self.load_label(label_name = new_name, label_idxs=self.labels[label_name].vertex_indexes[thresh_idx], 
+                            label_RAS=self.labels[label_name].ras_coords[thresh_idx], label_stat=self.labels[label_name].label_stat[thresh_idx])
+        
+        return self.labels[label_name].vertex_indexes[thresh_idx], self.labels[label_name].ras_coords[thresh_idx], self.labels[label_name].label_stat[thresh_idx]
+
+
         
 
 
