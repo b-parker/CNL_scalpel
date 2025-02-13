@@ -75,7 +75,7 @@ class ScalpelSubject(object):
         gyrus_gray = [250, 250, 250]
         sulcus_gray = [130, 130, 130]
         if self.surface_type == 'inflated':
-            print('Building cortical mesh (this may take 1 - 2 minutes)')
+            print('Initial plot builds cortical mesh (1 - 2 minutes)')
             gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
             sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
             self._mesh['gyrus'] = gyrus_mesh
