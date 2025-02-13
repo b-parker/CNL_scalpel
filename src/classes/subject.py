@@ -145,6 +145,19 @@ class ScalpelSubject(object):
         """
         self._labels.pop(label_name)
 
+    def write_label(self, label_name, custom_label_path):
+        """
+        Write a label to a file.
+
+        Parameters:
+        - label_name (str): Name of the label.
+        - custom_label_path (str): Path to save the label.
+
+        Returns:
+        - None
+        """
+        self._labels[label_name].write_label(custom_label_path)
+
     ############################
     # Visualization Methods
     ############################
@@ -158,7 +171,9 @@ class ScalpelSubject(object):
 
     def plot_label(self, label_name: str, view='lateral', label_ind=None, face_colors=None):
         if self._scene is None:
-            initialize_scene()
+            if self._mesh == {}:
+                self.mesh
+            self._scene = initialize_scene(self._mesh, view, self._hemi, self._surface_type)
         return plot_label(self._scene, self._ras_coords, self._faces, self._labels, label_name, view, self._hemi, face_colors, label_ind)
 
     def remove_label(self, label_name: str):
@@ -190,7 +205,7 @@ class ScalpelSubject(object):
         if not all(name in self.labels for name in label_names):
             raise ValueError("All input labels must exist in the subject.")
 
-        combined_ind = np.unique(np.concatenate([self.labels[name][0] for name in label_names])).astype(int)
+        combined_ind = np.unique(np.concatenate([self.labels[name].vertex_indexes for name in label_names])).astype(int)
         combined_ras = self.ras_coords[combined_ind]
         self.load_label(new_label_name, combined_ind, combined_ras)
 
@@ -216,7 +231,7 @@ class ScalpelSubject(object):
         if label_name not in self.labels:
             raise ValueError(f"Label '{label_name}' does not exist.")
 
-        label_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label_name][0])
+        label_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label_name].vertex_indexes)
         label_boundary = surface_utils.find_label_boundary(label_faces)
         boundary_ras = self.ras_coords[label_boundary]
 
@@ -335,8 +350,8 @@ class ScalpelSubject(object):
         if label1 not in self.labels or label2 not in self.labels:
             raise ValueError("Both labels must exist in the subject.")
 
-        label1_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label1][0])
-        label2_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label2][0])
+        label1_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label1].vertex_indexes)
+        label2_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label2].vertex_indexes)
 
         label1_neighbors = np.unique(label1_faces)
         label2_neighbors = np.unique(label2_faces)
@@ -424,7 +439,7 @@ class ScalpelSubject(object):
         """
 
         # get the faces associate with the label
-        label_faces_ind = np.where(np.isin(self.faces, self.labels[label_name]['idxs']))[0]
+        label_faces_ind = np.where(np.isin(self.faces, self.labels[label_name].vertex_indexes))[0]
         label_faces = self.faces[label_faces_ind]
 
         # Calculate centroid 
@@ -441,8 +456,8 @@ class ScalpelSubject(object):
                 self.load_label(f'{label_name}_centroid', label_idxs=centroid_faces_vertices, label_RAS=centroid_ras)
             return centroid_faces_vertices, centroid_ras
         else:
-            centroid_surface_vertex = np.array([centroid_surface_vertex])
-            centroid_surface_ras = np.array([centroid_surface_ras])
+            centroid_surface_vertex = np.array(centroid_surface_vertex)
+            centroid_surface_ras = np.array(centroid_surface_ras)
             if load:
                 self.load_label(f'{label_name}_centroid', label_idxs=centroid_surface_vertex, label_RAS=centroid_surface_ras)
             return centroid_surface_vertex, centroid_surface_ras

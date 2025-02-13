@@ -117,4 +117,14 @@ class Label(object):
 
         return np.array(sulcus_index), np.array(sulcus_RAS)
     
+    def write_label(self, label_name, label_dir_path, custom_label_name=None):
+        """
+        Writes label to file.
+
+        Parameters:
+        - custom_label_path (str): Path to save the label.
+
+        """
+        sfu.write_label(label_name, self._vertex_indexes, self._ras_coords, self._stat, custom_label_dir=label_dir_path, custom_label_name=custom_label_name)
+    
     

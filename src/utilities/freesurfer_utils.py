@@ -8,15 +8,16 @@ import json
 import datetime
 from numpy.random import randint
 import numpy as np
-from nibabel.freesurfer.io import read_geometry
 import pandas as pd
 
+from typing import Union
+
 try:
-    from types import NoneType
+    from typing import NoneType
 except ImportError:
     NoneType = type(None)
     
-from types import NoneType
+
 
 def freesurfer_label2label(source_subjects_dir:str, source_subject: str, 
                            target_subject_dir: str, target_subject: str, 
@@ -613,7 +614,7 @@ def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, s
             print(f'\nSubjects not added to {tarfile_name}.\n')
 
 
-def read_label(label_name: str | Path, include_stat: bool = False) -> tuple:
+def read_label(label_name: Union[str, Path], include_stat: bool = False) -> tuple:
     """
     Reads a freesurfer-style .label file (5 columns)
     
@@ -644,7 +645,7 @@ def read_label(label_name: str | Path, include_stat: bool = False) -> tuple:
     
     return vertices, RAS_coords
 
-def write_label( label_name: str | Path, label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: str | Path, surface_type: str, overwrite: bool = False, **kwargs):
+def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: Union[str, Path], surface_type: str, overwrite: bool = False, **kwargs):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -758,7 +759,7 @@ def get_gyrus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_t
     return np.array(gyrus_index), np.array(gyrus_RAS)
 
 
-def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str, data_dir: str or Path) -> pd.DataFrame:
+def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str, data_dir: Union[str, Path]) -> pd.DataFrame:
     """ 
     Takes a subject list and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 
@@ -801,7 +802,7 @@ def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str
     return all_stats_df
 
 
-def subject_label_stats2DataFrame(subjects_dir: str or Path, subject_list: list, label_name: str or list, hemi: str or list, data_dir_from_subject_fs_dir:str = 'label', must_exist = True) -> pd.DataFrame:
+def subject_label_stats2DataFrame(subjects_dir: Union[str, Path], subject_list: list, label_name: Union[str, list], hemi: Union[str, list], data_dir_from_subject_fs_dir:str = 'label', must_exist = True) -> pd.DataFrame:
     """ 
     Takes a subject list, label list, and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 

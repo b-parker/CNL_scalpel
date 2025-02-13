@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import trimesh as tm
 from src.utilities import geometry_utils
+NoneType = type(None)
 
 # Define a dictionary of default colors
 DEFAULT_COLORS = {

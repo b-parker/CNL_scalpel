@@ -1,7 +1,7 @@
 .DS_Store
 .gitignore
 README.md
-setup.py
+pyproject.toml
 .vscode/settings.json
 data/.DS_Store
 data/annotation.png
@@ -9,7 +9,6 @@ data/rh.pos_6_vert.label
 data/rh.pos_boundary.label
 docs/CNL_scalpel_notes.org
 docs/fscoordinates.pdf
-notebooks/CNL_scalpel_demo.ipynb
 notebooks/CNL_scalpel_scratch 2.ipynb
 notebooks/CNL_scalpel_scratch 3.ipynb
 notebooks/CNL_scalpel_scratch.ipynb
