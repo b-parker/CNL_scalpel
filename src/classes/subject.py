@@ -118,6 +118,8 @@ class ScalpelSubject(object):
         - label_name (str): Name of the label.
         - label_idxs (np.array, optional): Vertex indices of the label. Defaults to None.
         - label_RAS (np.array, optional): RAS coordinates of the label. Defaults to None.
+        - label_stat (np.array, optional): Statistical values of the label. Defaults to None.
+        - custom_label_path (str, optional): Path to a custom label file. Defaults to None.
 
         Returns:
         - None 

@@ -68,6 +68,7 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
     face_colors = np.array(face_colors).astype(int)
     label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
     apply_rotation(label_mesh, view, hemi)
+    
     scene.add_geometry(label_mesh, geom_name=label_name)
     return scene.show()
 
