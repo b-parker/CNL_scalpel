@@ -22,8 +22,8 @@ def main():
     subject_list = [subject.strip() for subject in subject_list]
 
     def get_label_paths(subject):
-        aparc_label_paths = subjects_dir / subject / 'label' / 'aparc_labels_a2009s'
-        dk_label_paths = subjects_dir / subject / 'label' / 'aparc_labels_DK'
+        aparc_label_paths = subjects_dir / subject / 'label' / 'aparc_a2009s_labels'
+        dk_label_paths = subjects_dir / subject / 'label' / 'aparc_DKTatlas40_labels'
 
         aparc_labels = [label for label in aparc_label_paths.iterdir() if label.is_file()]
         dk_labels = [label for label in dk_label_paths.iterdir() if label.is_file()]
