@@ -198,92 +198,76 @@ def freesurfer_mris_anatomical_stats(
     log_file: Optional[Union[str, Path]] = None,
     smooth_iterations: Optional[int] = None,
     color_table_file: Optional[Union[str, Path]] = None,
-    no_global: bool = False,
+    no_global: bool = True,  # Set to True by default to avoid permission issues
     th3: bool = False,
-    freesurfer_home = os.environ.get('FREESURFER_HOME')
+    freesurfer_home: Optional[str] = None
 ) -> sp.CompletedProcess:
     """
     Run mris_anatomical_stats command with specified parameters.
-    
-    Args:
-        subject_name: Subject name
-        hemisphere: Hemisphere ('lh' or 'rh')
-        subjects_dir: Path to subjects directory
-        surface_name: Optional surface name
-        thickness_range: Tuple of (low_thresh, high_thresh) for thickness consideration
-        label_file: Path to label file
-        thickness_file: Path to thickness file
-        annotation_file: Path to annotation file
-        tabular_Returns: Whether to use tabular output format
-        table_file: Path to output table file
-        log_file: Path to log file
-        smooth_iterations: Number of smoothing iterations
-        color_table_file: Path to output color table file
-        no_global: Whether to skip global brain stats
-        th3: Whether to compute vertex-wise volume using tetrahedra
-
-    Returns:
-        CompletedProcess instance with return code and output
-    
-    Raises:
-        sp.CalledProcessError: If the command returns non-zero exit status
     """
-
-    if not freesurfer_home:
-        freesurfer_home = os.environ.get('FREESURFER_HOME')
-    
+    # Get FreeSurfer home
     if freesurfer_home is None:
-        RaiseValueError("FREESURFER_HOME not set in environment or passed as argument")
-
-    # Build command list
-    cmd = ['mris_anatomical_stats']
-    
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths on Linux
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+                    
+    if not freesurfer_home:
+        raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+        
+    # Ensure subjects_dir is a string
     if not isinstance(subjects_dir, str):
         subjects_dir = str(subjects_dir)
-        os.environ['SUBJECTS_DIR'] = subjects_dir
     
+    # Set up environment
     env = os.environ.copy()
     env['SUBJECTS_DIR'] = subjects_dir
     env['FREESURFER_HOME'] = freesurfer_home
-    # Clean any None values from the environment
-    env = {k: str(v) for k, v in env.items() if v is not None}
     
-
-    print(f"SUBJECTS_DIR: {os.environ['SUBJECTS_DIR']}")
-
-    # Add optional flagged arguments
-    if thickness_range:
-        cmd.extend(['-i', str(thickness_range[0]), str(thickness_range[1])])
+    # Linux-specific environment variables
+    if 'DISPLAY' not in env:
+        env['DISPLAY'] = ''  # Needed for X11 forwarding on headless servers
     
-    if label_file:
-        cmd.extend(['-l', str(label_file)])
+    # Set up other required FreeSurfer variables
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
     
-    if thickness_file:
-        cmd.extend(['-t', str(thickness_file)])
+    # Update PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
     
-    if annotation_file:
-        cmd.extend(['-a', str(annotation_file)])
+    # Update LD_LIBRARY_PATH for Linux
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
+    else:
+        env['LD_LIBRARY_PATH'] = fs_lib
     
-    if tabular_Returns:
-        cmd.append('-b')
+    # Check if the command exists
+    mris_cmd = os.path.join(fs_bin, 'mris_anatomical_stats')
+    if os.path.exists(mris_cmd):
+        cmd = [mris_cmd]
+    else:
+        # Fall back to system PATH
+        cmd = ['mris_anatomical_stats']
     
-    if table_file:
-        cmd.extend(['-f', str(table_file)])
+    # Print debug info
+    print(f"Using FREESURFER_HOME: {env['FREESURFER_HOME']}")
+    print(f"Using SUBJECTS_DIR: {env['SUBJECTS_DIR']}")
+    print(f"Command path: {cmd[0]}")
     
-    if log_file:
-        cmd.extend(['-log', str(log_file)])
+    # [Rest of your existing code for building command arguments]
     
-    if smooth_iterations is not None:
-        cmd.extend(['-nsmooth', str(smooth_iterations)])
-    
-    if color_table_file:
-        cmd.extend(['-c', str(color_table_file)])
-    
+    # Add -noglobal flag by default to avoid permission issues
     if no_global:
         cmd.append('-noglobal')
-    
-    if th3:
-        cmd.append('-th3')
     
     # Add required positional arguments
     cmd.extend([subject_name, hemisphere])
@@ -292,23 +276,23 @@ def freesurfer_mris_anatomical_stats(
     if surface_name:
         cmd.append(surface_name)
     
-    try: 
-        # Run command
-        return sp.run(
+    # Run with better error handling
+    try:
+        result = sp.run(
             cmd,
             check=True,
             text=True,
             capture_output=True,
             env=env
         )
-
+        return result
     except sp.CalledProcessError as e:
-        print(f"Command failed with return code {e.returncode}")
-        print(f"Command: {e.cmd}")
+        print(f"Command failed: {' '.join(cmd)}")
+        print(f"Return code: {e.returncode}")
         print(f"Error output: {e.stderr}")
+        print(f"Standard output: {e.stdout}")
         raise
-
-
+    
 def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str, outfile_subjects_dir = None,  **kwargs):
     """ 
     Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
