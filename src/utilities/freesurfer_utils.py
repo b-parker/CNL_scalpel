@@ -17,172 +17,483 @@ try:
 except ImportError:
     NoneType = type(None)
     
-
-
-def freesurfer_label2label(source_subjects_dir:str, source_subject: str, 
-                           target_subject_dir: str, target_subject: str, 
-                           source_label: str, 
-                           target_label_dir: str, target_label:str, 
-                            hemi: str, 
-                            regmethod: str = 'surface', 
-                            unique_source = False,
-                            source_label_dir: str = None):
-    '''
-    Runs freesurfer label2label
-
+def freesurfer_label2label(
+    src_subject: str,
+    src_label: str,
+    trg_subject: str,
+    trg_label: str,
+    reg_method: str,
+    hemi: Optional[str] = None,
+    src_hemi: Optional[str] = None,
+    trg_hemi: Optional[str] = None,
+    src_ico_order: Optional[int] = None,
+    trg_ico_order: Optional[int] = None,
+    trg_surf: Optional[str] = None,
+    surf_reg: Optional[str] = None,
+    src_surf_reg: Optional[str] = None,
+    trg_surf_reg: Optional[str] = None,
+    src_mask: Optional[str] = None,
+    src_mask_sign: Optional[str] = None,
+    src_mask_frame: Optional[int] = None,
+    proj_abs: Optional[float] = None,
+    proj_frac: Optional[float] = None,
+    subjects_dir: Optional[str] = None,
+    no_hash: bool = False,
+    no_rev_map: bool = False,
+    freesurfer_home: Optional[str] = None,
+    debug: bool = False
+) -> sp.CompletedProcess:
+    """
+    Converts a label in one subject's space to a label in another subject's space.
+    
     Args:
-    subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
-    source_subject: str = source subject ID
-    target_subject: str = target subject ID
-    target_subject_dir : str = target subject directory
-    source_label: str = source label name
-    target_label: str = target label name (Just provide label name, final format will be <src_sub>.<hemi>.<label>.label)
-    hemi: str = hemisphere
-    regmethod: str = registration method
-    unique_source: bool = use a unique source label location
-
+        src_subject: Source subject name
+        src_label: Source label filename
+        trg_subject: Target subject name
+        trg_label: Target label filename
+        reg_method: Registration method ('surface' or 'volume')
+        hemi: Hemisphere ('lh' or 'rh'), required with surface reg_method
+        src_hemi: Source hemisphere (if different from hemi)
+        trg_hemi: Target hemisphere (if different from hemi)
+        src_ico_order: Source icosahedron order (when src_subject='ico')
+        trg_ico_order: Target icosahedron order (when trg_subject='ico')
+        trg_surf: Get xyz from this surface (default: 'white')
+        surf_reg: Surface registration file (default: 'sphere.reg')
+        src_surf_reg: Source surface registration file
+        trg_surf_reg: Target surface registration file
+        src_mask: Source mask surface value file
+        src_mask_sign: Source mask sign ('abs', 'pos', 'neg')
+        src_mask_frame: Source mask frame number (0-based)
+        proj_abs: Project absolute distance (mm) along surface normal
+        proj_frac: Project fraction of thickness along surface normal
+        subjects_dir: FreeSurfer subjects directory
+        no_hash: Don't use hash table when reg_method is surface
+        no_rev_map: Don't use reverse mapping when reg_method is surface
+        freesurfer_home: FreeSurfer installation directory
+        debug: Print debug information
+        
     Returns:
-    annot of the location <outdir>/<hemi>.<annot_name>.annot
-
-    '''
-   # Construct source label path based on whether custom directory provided
-    if source_label_dir:
-        source_label_path = Path(source_label_dir) / f"{source_subject}.{hemi}.{source_label}.label"
+        CompletedProcess object with command results
+    """
+    # Validate inputs
+    if reg_method not in ['surface', 'volume']:
+        raise ValueError(f"Registration method must be 'surface' or 'volume', got {reg_method}")
+    
+    if reg_method == 'surface' and not hemi:
+        raise ValueError("Hemisphere (--hemi) is required when using surface registration method")
+    
+    if hemi and hemi not in ['lh', 'rh']:
+        raise ValueError(f"Hemisphere must be 'lh' or 'rh', got {hemi}")
+    
+    if src_hemi and src_hemi not in ['lh', 'rh']:
+        raise ValueError(f"Source hemisphere must be 'lh' or 'rh', got {src_hemi}")
+    
+    if trg_hemi and trg_hemi not in ['lh', 'rh']:
+        raise ValueError(f"Target hemisphere must be 'lh' or 'rh', got {trg_hemi}")
+    
+    if src_subject == 'ico' and src_ico_order is None:
+        raise ValueError("Source icosahedron order (--srcicoorder) is required when src_subject is 'ico'")
+    
+    if trg_subject == 'ico' and trg_ico_order is None:
+        raise ValueError("Target icosahedron order (--trgicoorder) is required when trg_subject is 'ico'")
+    
+    # Find FreeSurfer home
+    if freesurfer_home is None:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+            if not freesurfer_home:
+                raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+    
+    # Set up environment
+    env = os.environ.copy()
+    if subjects_dir:
+        env['SUBJECTS_DIR'] = str(Path(subjects_dir).absolute())
+    elif 'SUBJECTS_DIR' not in env:
+        raise ValueError("SUBJECTS_DIR must be specified either as an argument or environment variable")
+    
+    env['FREESURFER_HOME'] = freesurfer_home
+    
+    # FreeSurfer paths
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
+    
+    # Update PATH and LD_LIBRARY_PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
     else:
-        source_label_path = Path(source_subjects_dir) / source_subject / "label" / f"{hemi}.{source_label}.label"
+        env['LD_LIBRARY_PATH'] = fs_lib
     
-    # Construct target label path
-    target_label_path = Path(target_label_dir) / f"{source_subject}.{hemi}.{target_label}.label"
+    # Print debug info
+    if debug:
+        print(f"Using FREESURFER_HOME: {env['FREESURFER_HOME']}")
+        print(f"Using SUBJECTS_DIR: {env['SUBJECTS_DIR']}")
     
-    # Verify paths
-    assert Path(source_subjects_dir).exists(), f"SUBJECTS_DIR does not exist: {source_subjects_dir}"
-    assert Path(source_subjects_dir, source_subject).exists(), f"Source subject does not exist: {source_subject}"
-    assert Path(target_subject_dir, target_subject).exists(), f"Target subject does not exist: {target_subject}"
-    assert source_label_path.exists(), f"Source label does not exist: {source_label_path}"
+    # Build command
+    cmd = ['mri_label2label']
     
-    # Set environment and construct command
-    os.environ['SUBJECTS_DIR'] = str(source_subjects_dir)
-    cmd = f"""mri_label2label \
-        --srcsubject fsaverage \
-        --srclabel {source_label_path} \
-        --trgsubject {target_subject} \
-        --trglabel {target_label_path} \
-        --hemi {hemi} \
-        --regmethod {regmethod}
+    # Required arguments
+    cmd.extend(['--srcsubject', src_subject])
+    cmd.extend(['--srclabel', src_label])
+    cmd.extend(['--trgsubject', trg_subject])
+    cmd.extend(['--trglabel', trg_label])
+    cmd.extend(['--regmethod', reg_method])
+    
+    # Required for surface registration
+    if hemi:
+        cmd.extend(['--hemi', hemi])
+    
+    # Optional arguments
+    if src_hemi:
+        cmd.extend(['--srchemi', src_hemi])
+    
+    if trg_hemi:
+        cmd.extend(['--trghemi', trg_hemi])
+    
+    if src_ico_order is not None:
+        cmd.extend(['--srcicoorder', str(src_ico_order)])
+    
+    if trg_ico_order is not None:
+        cmd.extend(['--trgicoorder', str(trg_ico_order)])
+    
+    if trg_surf:
+        cmd.extend(['--trgsurf', trg_surf])
+    
+    if surf_reg:
+        cmd.extend(['--surfreg', surf_reg])
+    
+    if src_surf_reg:
+        cmd.extend(['--srcsurfreg', src_surf_reg])
+    
+    if trg_surf_reg:
+        cmd.extend(['--trgsurfreg', trg_surf_reg])
+    
+    if src_mask:
+        cmd.extend(['--srcmask', src_mask])
+    
+    if src_mask_sign:
+        cmd.extend(['--srcmasksign', src_mask_sign])
+    
+    if src_mask_frame is not None:
+        cmd.extend(['--srcmaskframe', str(src_mask_frame)])
+    
+    if proj_abs is not None:
+        cmd.extend(['--projabs', str(proj_abs)])
+    
+    if proj_frac is not None:
+        cmd.extend(['--projfrac', str(proj_frac)])
+    
+    if subjects_dir:
+        cmd.extend(['--sd', subjects_dir])
+    
+    if no_hash:
+        cmd.append('--nohash')
+    
+    if no_rev_map:
+        cmd.append('--norevmap')
+    
+    # Log the command
+    cmd_str = ' '.join(cmd)
+    if debug:
+        print(f"Running command: {cmd_str}")
+    
+    # Execute command with error handling
+    try:
+        result = sp.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            env=env
+        )
+        if debug:
+            print("Command succeeded")
+            print(f"Output: {result.stdout}")
+        return result
+        
+    except sp.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Error output: {e.stderr}")
+        print(f"Standard output: {e.stdout}")
+        raise
+
+    
+def freesurfer_mris_label2annot(
+    subject_id: str,
+    hemi: str,
+    annot_name: str,
+    subjects_dir: Optional[str] = None,
+    ctab_file: Optional[str] = None,
+    label_files: Optional[List[str]] = None,
+    label_dir: Optional[str] = None,
+    use_default_label_dir: bool = False,
+    no_unknown: bool = False,
+    nhits_file: Optional[str] = None,
+    offset: Optional[int] = None,
+    max_stat_winner: bool = False,
+    threshold: Optional[float] = None,
+    surface: str = 'orig',
+    no_verbose: bool = False,
+    debug: bool = False,
+    freesurfer_home: Optional[str] = None
+) -> sp.CompletedProcess:
     """
+    Runs FreeSurfer's mris_label2annot command to amalgamate label files into an annotation file.
     
-    print(f'Executing: {cmd}')
-    sp.run(shlex.split(cmd), check=True)  
-
-    
-
-
-def freesurfer_label2annot(subjects_dir: str, subject_path: str, 
-                           label_list: list, hemi: str, ctab_path: str, annot_name: str):
-    '''
-    Runs freesurfer label2annot 
-
     Args:
-    subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
-    subject_path: str = filepath to subject's directory
-    label_list: str = list of strings containing all desired labels
-    hemi: str = hemisphere
-    ctab_path: str = filepath to color table
-    annot_name: str = desired label name to save annot
-    
-
+        subject_id: FreeSurfer subject ID
+        hemi: Hemisphere ('lh' or 'rh')
+        annot_name: Output annotation name (will be saved as hemi.annot_name.annot)
+        subjects_dir: FreeSurfer subjects directory (if None, uses env variable)
+        ctab_file: Color table file defining structure names, indices, and colors
+        label_files: List of label files to include in the annotation
+        label_dir: Directory to look for label files when using ctab
+        use_default_label_dir: Use subject's default label directory
+        no_unknown: Start label numbering at index 0 instead of 1
+        nhits_file: Output file showing number of labels assigned to each vertex
+        offset: Value to add to label number to get CTAB index
+        max_stat_winner: Keep label with highest 'stat' value
+        threshold: Threshold label by stats field
+        surface: Surface name to use (default: 'orig')
+        no_verbose: Turn off overlap and stat override messages
+        debug: Enable debug mode
+        freesurfer_home: FreeSurfer installation directory
+        
     Returns:
-    annot of the location <outdir>/<hemi>.<annot_name>.annot
-    '''
-    ## Determine all paths exist
-    assert Path(subject_path).exists(), f"Subject path does not exist: {subject_path}"
-    assert Path(ctab_path).exists(), f"Color table does not exist: {ctab_path}"
-    assert Path(subjects_dir).exists(), f"SUBJECTS_DIR does not exist: {subjects_dir}"
-
-    os.environ['SUBJECTS_DIR'] = subjects_dir
-    ctab_path = Path(ctab_path)
-    ## Sort labels into strings 
-    label_for_cmd = []
-
-  
-    for label in label_list:
-        label_for_cmd.append('--l')
-        label_filename = f"{hemi}.{label}.label"
-        label_filepath = f"{subject_path}/label/{label_filename}"
-        label_for_cmd.append(label_filepath)
-
-    subject_id = os.path.basename(subject_path)
-    all_labels = ' '.join(label_for_cmd)
-
-    ## Generate and run command 
-    my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
-
-    cmd = f"mris_label2annot \
-        --s {subject_id} \
-        --ctab {ctab_path}\
-        --ldir {subject_path}/label\
-        --a {annot_name} \
-        --h {hemi} \
-        {all_labels}"
-    
-    print(f'Calling: {cmd}')
-
-    sp.Popen(shlex.split(cmd), env=my_env).wait()
-
-
-
-## run annotation2label on set of labels
-def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str = None, annot_name: str ='aparc.a2009s'):
+        CompletedProcess object with command results
     """
-    Runs freesurfer annotation2label command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label
+    # Validate inputs
+    if hemi not in ['lh', 'rh']:
+        raise ValueError(f"Hemisphere must be 'lh' or 'rh', got {hemi}")
+    
+    # Find FreeSurfer home
+    if freesurfer_home is None:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+            if not freesurfer_home:
+                raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+    
+    # Set up environment
+    env = os.environ.copy()
+    if subjects_dir:
+        env['SUBJECTS_DIR'] = str(Path(subjects_dir).absolute())
+    elif 'SUBJECTS_DIR' not in env:
+        raise ValueError("SUBJECTS_DIR must be specified either as an argument or environment variable")
+    
+    env['FREESURFER_HOME'] = freesurfer_home
+    
+    # FreeSurfer paths
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
+    
+    # Update PATH and LD_LIBRARY_PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
+    else:
+        env['LD_LIBRARY_PATH'] = fs_lib
+    
+    # Print debug info
+    if debug:
+        print(f"Using FREESURFER_HOME: {env['FREESURFER_HOME']}")
+        print(f"Using SUBJECTS_DIR: {env['SUBJECTS_DIR']}")
+    
+    # Build command
+    cmd = ['mris_label2annot']
+    
+    # Required arguments
+    cmd.extend(['--subject', subject_id])
+    cmd.extend(['--hemi', hemi])
+    cmd.extend(['--annot', annot_name])
+    
+    # Optional arguments
+    if ctab_file:
+        cmd.extend(['--ctab', ctab_file])
 
+def freesurfer_annotation2label(
+    subject_dir: str,
+    subject_id: str,
+    hemi: Optional[str] = None,
+    outdir: Optional[str] = None,
+    annotation: str = 'aparc',
+    labelbase: Optional[str] = None,
+    label: Optional[int] = None,
+    seg: Optional[str] = None,
+    segbase: Optional[int] = None,
+    ctab: Optional[str] = None,
+    border: Optional[str] = None,
+    border_annot: Optional[str] = None,
+    surface: str = 'white',
+    stat: Optional[str] = None,
+    lobes: Optional[str] = None,
+    lobes_strict: Optional[str] = None,
+    lobes_strict_phcg: Optional[str] = None,
+    freesurfer_home: Optional[str] = None
+) -> Dict[str, sp.CompletedProcess]:
+    """
+    Runs freesurfer mri_annotation2label command to convert an annotation file to label files.
+    
     Args:
-    subject_dir : str = filepath to freesurfer subjects dir
-    subject_id : str = freesurfer subject ID
-    label_names : list = list of label names to be converted to labels
-    outdir : str = filepath to output directory
-    annot_name : str = filepath to annot file (do not include .annot)
-
+        subject_dir: Path to freesurfer subjects directory
+        subject_id: Freesurfer subject ID
+        hemi: Hemisphere ('lh', 'rh', or None for both)
+        outdir: Output directory for label files
+        annotation: Annotation file base name (default: 'aparc')
+        labelbase: Base name for label output files
+        label: Extract only a single label with this index
+        seg: Output segmentation volume file
+        segbase: Add this base to annotation number for seg value
+        ctab: Color table like FreeSurferColorLUT.txt
+        border: Output binary overlay of parcellation borders
+        border_annot: Custom location for border annotation
+        surface: Surface to use (default: 'white')
+        stat: Surface overlay file to use for stats
+        lobes: Create annotation based on cortical lobes
+        lobes_strict: Create annotation with stricter lobe definition
+        lobes_strict_phcg: Create annotation with PHCG lobe definition
+        freesurfer_home: FreeSurfer installation directory
+        
     Returns:
-    Creates a label for each label name in the annotation
+        Dictionary mapping hemisphere to subprocess.CompletedProcess object
     """
-
-     ## Check existence of subject and annotations
+    # Check path objects
     subject_dir = Path(subject_dir)
-    subject_path = subject_dir / subject_id 
+    subject_path = subject_dir / subject_id
     assert subject_path.exists(), f"Subject not found at {subject_path.absolute()}"
-    annot_path = subject_path / "label" / f"lh.{annot_name}.annot" 
-    assert annot_path.exists(), f"Annotation not found at {annot_path.absolute()}.annot"
-
-    ## Set environment variables for the subject
-    existing_env = os.environ.copy()
-    existing_env["SUBJECTS_DIR"] = subject_dir.absolute()
-
-    if outdir == None:
-        outdir = subject_path / "/label"
-
-    outdir = Path(outdir)
-
-    ## Create command for annotation - append all labels in label_names
-    for hemi in ['lh', 'rh']:
-        command = ['mri_annotation2label',
-                    f'--subject {subject_id}',
-                    f'--hemi {hemi}',
-                    f'--annotation {annot_name}',
-                    f'--outdir {outdir}']
-         
-        print("COMMAND:", " ".join(command)) 
-        ## 
-        cmd_open = sp.Popen(' '.join(command), env = existing_env, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-
-        stdout, stderr = cmd_open.communicate()  
-
-        if cmd_open.returncode == 0:
-              print("Command succeeded with Returns:")
-              print(stdout.decode())
-        else:
-              print("Command failed with error:")
-              print(stderr.decode())
+    
+    # Set default hemispheres if not specified
+    hemispheres = ['lh', 'rh'] if hemi is None else [hemi]
+    
+    # Find FreeSurfer home
+    if freesurfer_home is None:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+            if not freesurfer_home:
+                raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+    
+    # Set up environment
+    env = os.environ.copy()
+    env['SUBJECTS_DIR'] = str(subject_dir.absolute())
+    env['FREESURFER_HOME'] = freesurfer_home
+    
+    # FreeSurfer paths
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
+    
+    # Update PATH and LD_LIBRARY_PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
+    else:
+        env['LD_LIBRARY_PATH'] = fs_lib
+    
+    # Check if annotation files exist for each hemisphere
+    for h in hemispheres:
+        annot_path = subject_path / "label" / f"{h}.{annotation}.annot"
+        assert annot_path.exists(), f"Annotation not found at {annot_path.absolute()}"
+    
+    # Set default output directory if not specified
+    if outdir is None:
+        outdir = subject_path / "label"
+    else:
+        outdir = Path(outdir)
+        os.makedirs(outdir, exist_ok=True)
+    
+    results = {}
+    
+    # Run command for each hemisphere
+    for h in hemispheres:
+        # Build command
+        cmd = ['mri_annotation2label',
+               f'--subject {subject_id}',
+               f'--hemi {h}',
+               f'--annotation {annotation}']
+        
+        # Add optional arguments
+        if outdir:
+            cmd.append(f'--outdir {outdir}')
+        if labelbase:
+            cmd.append(f'--labelbase {labelbase}')
+        if label is not None:
+            cmd.append(f'--label {label}')
+        if seg:
+            cmd.append(f'--seg {seg}')
+        if segbase is not None:
+            cmd.append(f'--segbase {segbase}')
+        if ctab:
+            cmd.append(f'--ctab {ctab}')
+        if border:
+            cmd.append(f'--border {border}')
+        if border_annot:
+            cmd.append(f'--border-annot {border_annot}')
+        if surface:
+            cmd.append(f'--surface {surface}')
+        if stat:
+            cmd.append(f'--stat {stat}')
+        if lobes:
+            cmd.append(f'--lobes {lobes}')
+        if lobes_strict:
+            cmd.append(f'--lobesStrict {lobes_strict}')
+        if lobes_strict_phcg:
+            cmd.append(f'--lobesStrictPHCG {lobes_strict_phcg}')
+        
+        # Log the command
+        print(f"Running command for {h}:", " ".join(cmd))
+        
+        # Execute command with better error handling
+        try:
+            result = sp.run(
+                " ".join(cmd),
+                shell=True,
+                check=True,
+                text=True,
+                capture_output=True,
+                env=env
+            )
+            print(f"Command for {h} succeeded")
+            print(f"Output: {result.stdout}")
+            results[h] = result
+            
+        except sp.CalledProcessError as e:
+            print(f"Command for {h} failed with return code {e.returncode}")
+            print(f"Error output: {e.stderr}")
+            print(f"Standard output: {e.stdout}")
+            results[h] = e
+    
+    return results
 
 def freesurfer_mris_anatomical_stats(
     subject_name: str,
@@ -292,88 +603,176 @@ def freesurfer_mris_anatomical_stats(
         print(f"Error output: {e.stderr}")
         print(f"Standard output: {e.stdout}")
         raise
-    
-def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str, outfile_subjects_dir = None,  **kwargs):
-    """ 
-    Runs freesurfer's label2vol command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_label2vol
 
-    Defaults to run with registration to the same subject. This is coded as the --identity flag registering to the identity mat
-
-    Args:
-    subjects_dir : str = filepath to freesurfer subjects dir
-    subject : str = freesurfer subject ID
-    hemi : str = hemisphere 
-    outfile_name : str = outfile name (do not include .nii.gz)
-    label_name : str = filepath to label file (do not include .label)
-    annot_name : str = filepath to annot file (do not include .annot)
-    
-
-    Returns:
-    Creates a volume of the label as a binary mask
-    
+def freesurfer_label2vol(
+    output_file: str,
+    temp_vol: str,
+    label_files: Optional[List[str]] = None,
+    annot_file: Optional[str] = None,
+    seg_file: Optional[str] = None,
+    reg_mat_file: Optional[str] = None,
+    fill_thresh: Optional[float] = None,
+    proj_type: Optional[str] = None,
+    proj_start: Optional[float] = None,
+    proj_stop: Optional[float] = None,
+    proj_delta: Optional[float] = None,
+    subject_id: Optional[str] = None,
+    hemi: Optional[str] = None,
+    identity: bool = False,
+    subjects_dir: Optional[str] = None,
+    freesurfer_home: Optional[str] = None,
+    debug: bool = False
+) -> sp.CompletedProcess:
     """
-    ## Determine if label files or annot files exist
+    Converts a label or set of labels into a volume.
     
+    Args:
+        output_file: Output volume file (any mri_convert format accepted)
+        temp_vol: Template volume - output will have same size and geometry
+        label_files: List of label files (mutually exclusive with annot_file and seg_file)
+        annot_file: Annotation file (mutually exclusive with label_files and seg_file)
+        seg_file: Segmentation file (mutually exclusive with label_files and annot_file)
+        reg_mat_file: tkregister-style registration matrix file
+        fill_thresh: Relative threshold for voxel membership
+        proj_type: Projection type ('abs' or 'frac') for surface projection
+        proj_start: Start value for projection
+        proj_stop: Stop value for projection
+        proj_delta: Step size for projection
+        subject_id: Subject ID (required when using --proj)
+        hemi: Hemisphere ('lh' or 'rh', required when using --proj)
+        identity: Use identity matrix as registration
+        subjects_dir: FreeSurfer subjects directory
+        freesurfer_home: FreeSurfer installation directory
+        debug: Print debug information
+        
+    Returns:
+        CompletedProcess object with command results
+    """
+    # Input validation
+    input_count = sum(1 for x in [label_files, annot_file, seg_file] if x is not None)
+    if input_count == 0:
+        raise ValueError("One of label_files, annot_file, or seg_file must be specified")
+    if input_count > 1:
+        raise ValueError("Only one of label_files, annot_file, or seg_file can be specified")
     
-    if 'label_name' in kwargs:
-        if isinstance(kwargs['label_name'], str):
-            label_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['label_name']}.label"
-
-            label_for_cmd = ['--label', label_file] 
-            all_labels = ' '.join(label_for_cmd)
-            
-        if isinstance(kwargs['label_name'], list): 
-            label_files = [f"{subjects_dir}/{subject}/label/{hemi}.{label}.label" for label in kwargs['label_name']] 
-            for label_file in label_files:
-                assert Path(label_file).exists(), f"Label file does not exist: {label_file}"
-
-            label_for_cmd = [] 
-
-            for i, label in kwargs['label_name']:
-                label_for_cmd.append('--label')
-                label_for_cmd.append(label_files[i])
-                all_labels = ' '.join(label_for_cmd)
-
-
-    if 'annot_name' in kwargs:
-        if isinstance(kwargs['annot_name'], str):
-            annot_file = f"{subjects_dir}/{subject}/label/{hemi}.{kwargs['annot_name']}.annot"
-            assert Path(annot_file).exists(), f"annot_file does not exist: {annot_file}" 
-
-            label_for_cmd = ['--annot', annot_file] 
-            all_labels = ' '.join(label_for_cmd)
-
-        if isinstance(kwargs['annot_name'], list):
-            annot_files = [f"{subjects_dir}/{subject}/label/{hemi}.{annot}.label" for annot in kwargs['annot_name']] 
-            for annot_file in annot_files:
-                assert Path(annot_file).exists(), f"Annot file does not exist: {annot_file}"
-
-            label_for_cmd = [] 
-
-            for i, annot in kwargs['annot_name']:
-                label_for_cmd.append('--annot')
-                label_for_cmd.append(annot_files[i])
-                all_labels = ' '.join(label_for_cmd)
-
-    if isinstance(outfile_subjects_dir, NoneType):
-        outfile = f"{subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
-        os.chdir(f"{subjects_dir}/{subject}")
+    # Projection parameter validation
+    if any([proj_type, proj_start is not None, proj_stop is not None, proj_delta is not None]):
+        if not all([proj_type, proj_start is not None, proj_stop is not None, proj_delta is not None]):
+            raise ValueError("All projection parameters (type, start, stop, delta) must be specified when using projection")
+        
+        if proj_type not in ['abs', 'frac']:
+            raise ValueError(f"Projection type must be 'abs' or 'frac', got {proj_type}")
+        
+        if not subject_id:
+            raise ValueError("Subject ID is required when using projection")
+        
+        if not hemi:
+            raise ValueError("Hemisphere is required when using projection")
+        
+        if hemi not in ['lh', 'rh']:
+            raise ValueError(f"Hemisphere must be 'lh' or 'rh', got {hemi}")
+    
+    # Find FreeSurfer home
+    if freesurfer_home is None:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+            if not freesurfer_home:
+                raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+    
+    # Set up environment
+    env = os.environ.copy()
+    if subjects_dir:
+        env['SUBJECTS_DIR'] = str(Path(subjects_dir).absolute())
+    elif 'SUBJECTS_DIR' not in env and subject_id:
+        raise ValueError("SUBJECTS_DIR must be specified either as an argument or environment variable when using subject_id")
+    
+    env['FREESURFER_HOME'] = freesurfer_home
+    
+    # FreeSurfer paths
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
+    
+    # Update PATH and LD_LIBRARY_PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
     else:
-        outfile = f"{outfile_subjects_dir}/{subject}/mri/{hemi}.{outfile_name}.nii.gz"
-
-    my_env = {**os.environ, 'SUBJECTS_DIR' : f"{subjects_dir}"}
-    cmd = f"mri_label2vol \
-            --temp ./mri/orig.mgz \
-            --o {outfile} \
-            --subject {subject}\
-            --hemi {hemi} \
-            --identity \
-            {all_labels} "
+        env['LD_LIBRARY_PATH'] = fs_lib
     
-    print(f'Calling: {cmd}')
-
-    sp.Popen(shlex.split(cmd), env = my_env).wait()
-
+    # Print debug info
+    if debug:
+        print(f"Using FREESURFER_HOME: {env['FREESURFER_HOME']}")
+        print(f"Using SUBJECTS_DIR: {env.get('SUBJECTS_DIR', 'Not set')}")
+    
+    # Build command
+    cmd = ['mri_label2vol']
+    
+    # Required arguments
+    cmd.extend(['--temp', temp_vol])
+    cmd.extend(['--o', output_file])
+    
+    # Input specification (label, annot, or seg)
+    if label_files:
+        for label in label_files:
+            cmd.extend(['--label', label])
+    elif annot_file:
+        cmd.extend(['--annot', annot_file])
+    elif seg_file:
+        cmd.extend(['--seg', seg_file])
+    
+    # Optional arguments
+    if reg_mat_file:
+        cmd.extend(['--reg', reg_mat_file])
+    
+    if fill_thresh is not None:
+        cmd.extend(['--fillthresh', str(fill_thresh)])
+    
+    if all([proj_type, proj_start is not None, proj_stop is not None, proj_delta is not None]):
+        cmd.extend(['--proj', proj_type, str(proj_start), str(proj_stop), str(proj_delta)])
+        cmd.extend(['--subject', subject_id])
+        cmd.extend(['--hemi', hemi])
+    
+    if identity:
+        cmd.append('--identity')
+    
+    if subjects_dir:
+        cmd.extend(['--sd', subjects_dir])
+    
+    # Log the command
+    cmd_str = ' '.join(cmd)
+    if debug:
+        print(f"Running command: {cmd_str}")
+    
+    # Execute command with error handling
+    try:
+        result = sp.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            env=env
+        )
+        if debug:
+            print("Command succeeded")
+            print(f"Output: {result.stdout}")
+        return result
+        
+    except sp.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Error output: {e.stderr}")
+        print(f"Standard output: {e.stdout}")
+        raise
     
 
 
