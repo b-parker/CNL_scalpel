@@ -10,7 +10,8 @@ from numpy.random import randint
 import numpy as np
 import pandas as pd
 
-from typing import Union, Optional, List, Tuple
+from typing import Union, Optional, List, Tuple, Dict
+
 
 try:
     from typing import NoneType
@@ -41,7 +42,7 @@ def freesurfer_label2label(
     no_hash: bool = False,
     no_rev_map: bool = False,
     freesurfer_home: Optional[str] = None,
-    debug: bool = False
+    debug: bool = False,
 ) -> sp.CompletedProcess:
     """
     Converts a label in one subject's space to a label in another subject's space.
@@ -350,7 +351,8 @@ def freesurfer_annotation2label(
     lobes: Optional[str] = None,
     lobes_strict: Optional[str] = None,
     lobes_strict_phcg: Optional[str] = None,
-    freesurfer_home: Optional[str] = None
+    freesurfer_home: Optional[str] = None,
+    make_dirs: Optional[str] = False
 ) -> Dict[str, sp.CompletedProcess]:
     """
     Runs freesurfer mri_annotation2label command to convert an annotation file to label files.
@@ -430,7 +432,8 @@ def freesurfer_annotation2label(
         outdir = subject_path / "label"
     else:
         outdir = Path(outdir)
-        os.makedirs(outdir, exist_ok=True)
+        if make_dirs:
+            os.makedirs(outdir, exist_ok=True)
     
     results = {}
     
@@ -574,8 +577,31 @@ def freesurfer_mris_anatomical_stats(
     print(f"Using SUBJECTS_DIR: {env['SUBJECTS_DIR']}")
     print(f"Command path: {cmd[0]}")
     
-    # [Rest of your existing code for building command arguments]
     
+    if thickness_range:
+        cmd.extend(['-i', str(thickness_range[0]), str(thickness_range[1])])
+    if label_file:
+        cmd.extend(['-l', str(label_file)])
+    if thickness_file:
+        cmd.extend(['-t', str(thickness_file)])
+    if annotation_file:
+        cmd.extend(['-a', str(annotation_file)])
+    if tabular_Returns:
+        cmd.append('-b')
+    if table_file:
+        cmd.extend(['-f', str(table_file)])
+    if log_file:
+        cmd.extend(['-log', str(log_file)])
+    if smooth_iterations is not None:
+        cmd.extend(['-nsmooth', str(smooth_iterations)])
+    if color_table_file:
+        cmd.extend(['-c', str(color_table_file)])
+    if no_global:
+        cmd.append('-noglobal')
+    if th3:
+        cmd.append('-th3')
+    if surface_name:
+        cmd.append(surface_name)
     # Add -noglobal flag by default to avoid permission issues
     if no_global:
         cmd.append('-noglobal')
