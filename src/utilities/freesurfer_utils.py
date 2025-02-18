@@ -10,7 +10,7 @@ from numpy.random import randint
 import numpy as np
 import pandas as pd
 
-from typing import Union
+from typing import Union, Optional, List, Tuple
 
 try:
     from typing import NoneType
@@ -30,7 +30,7 @@ def freesurfer_label2label(source_subjects_dir:str, source_subject: str,
     '''
     Runs freesurfer label2label
 
-    INPUT:
+    Args:
     subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
     source_subject: str = source subject ID
     target_subject: str = target subject ID
@@ -41,7 +41,7 @@ def freesurfer_label2label(source_subjects_dir:str, source_subject: str,
     regmethod: str = registration method
     unique_source: bool = use a unique source label location
 
-    OUTPUT:
+    Returns:
     annot of the location <outdir>/<hemi>.<annot_name>.annot
 
     '''
@@ -82,7 +82,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     '''
     Runs freesurfer label2annot 
 
-    INPUT:
+    Args:
     subjects_dir: str = freesurfer subjects directory, os.environ['SUBJECTS_DIR'] called below
     subject_path: str = filepath to subject's directory
     label_list: str = list of strings containing all desired labels
@@ -91,7 +91,7 @@ def freesurfer_label2annot(subjects_dir: str, subject_path: str,
     annot_name: str = desired label name to save annot
     
 
-    OUTPUT:
+    Returns:
     annot of the location <outdir>/<hemi>.<annot_name>.annot
     '''
     ## Determine all paths exist
@@ -136,14 +136,14 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str =
     """
     Runs freesurfer annotation2label command : https://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label
 
-    INPUT:
+    Args:
     subject_dir : str = filepath to freesurfer subjects dir
     subject_id : str = freesurfer subject ID
     label_names : list = list of label names to be converted to labels
     outdir : str = filepath to output directory
     annot_name : str = filepath to annot file (do not include .annot)
 
-    OUTPUT:
+    Returns:
     Creates a label for each label name in the annotation
     """
 
@@ -169,7 +169,7 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str =
                     f'--subject {subject_id}',
                     f'--hemi {hemi}',
                     f'--annotation {annot_name}',
-                    f'--outdir {outdir.absolute()}']
+                    f'--outdir {outdir}']
          
         print("COMMAND:", " ".join(command)) 
         ## 
@@ -178,12 +178,135 @@ def freesurfer_annotation2label(subject_dir: str, subject_id: str, outdir: str =
         stdout, stderr = cmd_open.communicate()  
 
         if cmd_open.returncode == 0:
-              print("Command succeeded with output:")
+              print("Command succeeded with Returns:")
               print(stdout.decode())
         else:
               print("Command failed with error:")
               print(stderr.decode())
 
+def freesurfer_mris_anatomical_stats(
+    subject_name: str,
+    hemisphere: str,
+    subjects_dir: str,
+    surface_name: Optional[str] = None,
+    thickness_range: Optional[tuple[float, float]] = None,
+    label_file: Optional[Union[str, Path]] = None,
+    thickness_file: Optional[Union[str, Path]] = None,
+    annotation_file: Optional[Union[str, Path]] = None,
+    tabular_Returns: bool = False,
+    table_file: Optional[Union[str, Path]] = None,
+    log_file: Optional[Union[str, Path]] = None,
+    smooth_iterations: Optional[int] = None,
+    color_table_file: Optional[Union[str, Path]] = None,
+    no_global: bool = False,
+    th3: bool = False,
+    freesurfer_home = os.environ.get('FREESURFER_HOME')
+) -> sp.CompletedProcess:
+    """
+    Run mris_anatomical_stats command with specified parameters.
+    
+    Args:
+        subject_name: Subject name
+        hemisphere: Hemisphere ('lh' or 'rh')
+        subjects_dir: Path to subjects directory
+        surface_name: Optional surface name
+        thickness_range: Tuple of (low_thresh, high_thresh) for thickness consideration
+        label_file: Path to label file
+        thickness_file: Path to thickness file
+        annotation_file: Path to annotation file
+        tabular_Returns: Whether to use tabular output format
+        table_file: Path to output table file
+        log_file: Path to log file
+        smooth_iterations: Number of smoothing iterations
+        color_table_file: Path to output color table file
+        no_global: Whether to skip global brain stats
+        th3: Whether to compute vertex-wise volume using tetrahedra
+
+    Returns:
+        CompletedProcess instance with return code and output
+    
+    Raises:
+        sp.CalledProcessError: If the command returns non-zero exit status
+    """
+
+    if not freesurfer_home:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+    
+    if freesurfer_home is None:
+        RaiseValueError("FREESURFER_HOME not set in environment or passed as argument")
+
+    # Build command list
+    cmd = ['mris_anatomical_stats']
+    
+    if not isinstance(subjects_dir, str):
+        subjects_dir = str(subjects_dir)
+        os.environ['SUBJECTS_DIR'] = subjects_dir
+    
+    env = os.environ.copy()
+    env['SUBJECTS_DIR'] = subjects_dir
+    env['FREESURFER_HOME'] = freesurfer_home
+    # Clean any None values from the environment
+    env = {k: str(v) for k, v in env.items() if v is not None}
+    
+
+    print(f"SUBJECTS_DIR: {os.environ['SUBJECTS_DIR']}")
+
+    # Add optional flagged arguments
+    if thickness_range:
+        cmd.extend(['-i', str(thickness_range[0]), str(thickness_range[1])])
+    
+    if label_file:
+        cmd.extend(['-l', str(label_file)])
+    
+    if thickness_file:
+        cmd.extend(['-t', str(thickness_file)])
+    
+    if annotation_file:
+        cmd.extend(['-a', str(annotation_file)])
+    
+    if tabular_Returns:
+        cmd.append('-b')
+    
+    if table_file:
+        cmd.extend(['-f', str(table_file)])
+    
+    if log_file:
+        cmd.extend(['-log', str(log_file)])
+    
+    if smooth_iterations is not None:
+        cmd.extend(['-nsmooth', str(smooth_iterations)])
+    
+    if color_table_file:
+        cmd.extend(['-c', str(color_table_file)])
+    
+    if no_global:
+        cmd.append('-noglobal')
+    
+    if th3:
+        cmd.append('-th3')
+    
+    # Add required positional arguments
+    cmd.extend([subject_name, hemisphere])
+    
+    # Add optional positional argument
+    if surface_name:
+        cmd.append(surface_name)
+    
+    try: 
+        # Run command
+        return sp.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            env=env
+        )
+
+    except sp.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Command: {e.cmd}")
+        print(f"Error output: {e.stderr}")
+        raise
 
 
 def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_name : str, outfile_subjects_dir = None,  **kwargs):
@@ -192,7 +315,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
 
     Defaults to run with registration to the same subject. This is coded as the --identity flag registering to the identity mat
 
-    INPUT:
+    Args:
     subjects_dir : str = filepath to freesurfer subjects dir
     subject : str = freesurfer subject ID
     hemi : str = hemisphere 
@@ -201,7 +324,7 @@ def freesurfer_label2vol(subjects_dir : str, subject : str, hemi : str, outfile_
     annot_name : str = filepath to annot file (do not include .annot)
     
 
-    OUTPUT:
+    Returns:
     Creates a volume of the label as a binary mask
     
     """
@@ -274,11 +397,11 @@ def get_subjects_list(subjects_list: str, subjects_dir: str) -> list:
     '''
     Takes a txt subject list and returns a list of subject directory filepaths
     
-    INPUT:
+    Args:
     subjects_list: str = filepath to .txt subject list
     subjects_dir: str = filepath to subjects directory
 
-    OUTPUT:
+    Returns:
     subjects_filepaths: list: list of subject filepaths as strings
     '''
     
@@ -302,12 +425,12 @@ def sort_subjects_and_sulci(subject_filepaths: list, sulci_list: list) -> dict:
     '''
     Sorts subject hemispheres into groups based on which sulci are present in each hemisphere
 
-    INPUT:
+    Args:
     subject_filepath : list - output of get_subjects_list, a list of all full paths to subjects
 
     sulci_list : list - all possible sulci
 
-    OUTPUT:
+    Returns:
     subject_sulci_dict : dict - {subject_id : [[lh_sulci_present, rh_sulci_present]]}
     '''
     
@@ -357,7 +480,7 @@ def create_freesurfer_ctab(ctab_name: str, label_list: list, outdir: str, palett
     '''
     Creates a color table file for label2annot 
     
-    INPUT:
+    Args:
     ctab_name : str - desired name of color table
     label_list : list - list of strings containing all desired labels
     outdir : str - desired output directory
@@ -389,14 +512,14 @@ def create_ctabs_from_dict(project_colortable_dir: str, sulci_list: list, json_f
     Takes a dictionary of subjects and present sulci,
     creates a colortable file for each unique combination of sulci
 
-    INPUT:
+    Args:
     project_colortable_dir : str - filepath to project colortable directory
     json_file : str - filepath to json file containing subject sulci dictionary
     sulci_list : list - list of all possible sulci
     palette : dict - custom colors - dict labels and rgb colors as strings, with rgb values separated by tab - i.e. ['MFS' : 'int<tab>int<tab>int', ...]
     project_name : str - unique identifier for project 
 
-    OUTPUT:
+    Returns:
     ctab files for each unique combination of sulci
     '''
     print(json_file)
@@ -443,13 +566,13 @@ def dict_to_json(dictionary: dict, outdir: str, project_name: str):
     '''
     Takes a dictionary and saves as a JSON
 
-    INPUT:
+    Args:
     dictionary : dict - dictionary of {hemi_subject_id, [sulci_list]} created by sort_subjects_and_sulci()
     outdir : str - write directory for json of colortables
             NOTE: should be written to project directory for colortables
     project_name : str - the name of the project to be the name of the .json i.e. voorhies_natcom_2021.json
 
-    OUTPUT:
+    Returns:
     .json file of dictionary
     '''
     print(outdir)
@@ -465,13 +588,13 @@ def rename_labels(subjects_dir: str, subjects_list: str, sulci_dict: dict, by_co
     '''
     Renames labels in a given hemisphere for all subjects in a given subjects list
 
-    INPUT:
+    Args:
     subjects_dir : str - filepath to subjects directory
     subjects_list : str - filepath to subjects list
     sulci_list : dict - dict of sulci,{old_name: new_name}
     by_copy : bool - if True, copies files by cp (keeps original file) ; if False, renames files by mv (deletes original file)
 
-    OUTPUT:
+    Returns:
     Renamed label files
     
     '''
@@ -529,7 +652,7 @@ def create_tar_from_subject_list(project_dir: str, tarfile_name: str, subject_li
     """
     Creates a compressed .tar.gz file from a list of subjects recursively. 
         NOTE: This will add ALL files located in freesurfer subject directory
-    INPUT:
+    Args:
     project_dir : str - filepath to project directory where tar will be written
     tarfile_name : str - name for tar archive
     subject_list : str - filepath to .txt list of subjects
@@ -573,7 +696,7 @@ def create_tar_for_file_from_subject_list(project_dir: str, tarfile_name: str, s
     """
     Creates a compressed .tar.gz file from a list of subjects recursively. 
         NOTE: This will add ALL files located in freesurfer subject directory
-    INPUT:
+    Args:
     project_dir : str - filepath to project directory where tar will be written
     tarfile_name : str - name for tar archive
     subject_list : str - filepath to .txt list of subjects
@@ -649,7 +772,7 @@ def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RA
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
-    INPUT:
+    Args:
     label_name: str - name of label to be written
     label_indexes: np.array - numpy array of label indexes
     label_RAS: np.array - numpy array of label RAS coordinates
@@ -702,14 +825,14 @@ def get_sulcus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_
     """ 
     Returns all label indices and RAS coordinates for sulcus within freesurfer label
 
-    INPUT:
+    Args:
     _____
     label_index: np.array - numpy array of label indexes from src.read_label()
     label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
     curv: np.array - numpy array of curvature values from nb.freesurfer.read_morph_data()
     curv_threshold: int - value for thresholding curvature value
 
-    OUTPUT:
+    Returns:
     sulcus_index: np.array - numpy array of sulcus indexes from src.read_label()
     sulcus_RAS: np.array - numpy array of sulcus RAS vertices from src.read_label()
 
@@ -734,14 +857,14 @@ def get_gyrus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_t
     """ 
     Returns all label indices and RAS coordinates for gyrus within freesurfer label
 
-    INPUT:
+    Args:
     _____
     label_index: np.array - numpy array of label indexes from src.read_label()
     label_RAS: np.array - numpy array of label RAS vertices from src.read_label()
     curv: np.array - numpy array of curvature values from nb.freesurfer.read_morph_data()
     curv_threshold: int - value for thresholding curvature value
 
-    OUTPUT:
+    Returns:
     gyrus_index: np.array - numpy array of gyrus indexes from src.read_label()
     gyrus_RAS: np.array - numpy array of gyrus RAS vertices from src.read_label()
 
@@ -763,13 +886,13 @@ def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str
     """ 
     Takes a subject list and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 
-    INPUT:
+    Args:
     subject: str - subject ID
     label_name: str - name of the label to be included in the dataframe
     hemi: str - hemisphere to be included in the dataframe (must be 'lh', 'rh')
     data_dir: str or Path - directory where the stats.txt file is located
 
-    OUTPUT:
+    Returns:
     pd.DataFrame
 
 
@@ -806,14 +929,14 @@ def subject_label_stats2DataFrame(subjects_dir: Union[str, Path], subject_list: 
     """ 
     Takes a subject list, label list, and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
 
-    INPUT:
+    Args:
     subjects_dir: str or Path - FreeSurfer subjects directory
     subject_list: list - list of subjects to be included in the dataframe
     label_name: str or list - name of the label to be included in the dataframe
     hemi: str or list - hemisphere to be included in the dataframe (must be 'lh', 'rh', or 'both')
     data_dir_from_subject_fs_dir: str - directory where the stats.txt file is located relative to the subject's FreeSurfer directory, default is 'label'
 
-    OUTPUT: 
+    Returns: 
     pd.DataFrame
 
     """
@@ -863,7 +986,7 @@ def create_prob_label(project_id: str, fsaverage_projected_label_dir: str, subje
             """ 
             Creates probabilistic label files for a given label, with a subject held out
 
-            INPUT:
+            Args:
             project_id: str - unique identifier for project (included in final name of probabilistic label)
             fsaverage_projected_label_dir: str - filepath to fsaverage projected labels (resulting from freesurfer_label2label)
             subject_list_path: str - filepath to subject list
@@ -872,7 +995,7 @@ def create_prob_label(project_id: str, fsaverage_projected_label_dir: str, subje
             left_out_subject: str - subject to be held out
             hemi: str - hemisphere
 
-            OUTPUT:
+            Returns:
             probabilistic label files for each subject, with the left out subject held out 
             """
             ## Load subjects and remove left out subject
