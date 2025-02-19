@@ -42,19 +42,26 @@ def main():
     for subject in subject_list[:2]:
         print(f'Beginning mris_anatomical_stats for subject {subject}\n\n')
         for hemi in ['lh', 'rh']:
-            for i, label_file in enumerate(subject_labels[subject]['aparc_labels']):
+            aparc_labels_for_hemi = [label for label in subject_labels[subject]['aparc_labels'] 
+                            if label.name.startswith(hemi)]
+            
+            for i, label_file in enumerate(aparc_labels_for_hemi):
                 try:
                     table_file_folder = subjects_dir / subject / 'label' / 'label_stats' / 'aparc_labels_a2009s_stats'
                     table_file_folder.mkdir(parents=True, exist_ok=True)
                     table_file = table_file_folder / f'{".".join(label_file.name.split(".")[-3:])}.stats.txt'
-                
-                    print(f'Beginning {i}/{len(subject_labels[subject]["aparc_labels"])}: {hemi} {label_file.name.split(".")[-3:]}') 
-                    mris_anatomical_stats = freesurfer_mris_anatomical_stats(subject_name = subject, hemisphere = hemi, 
-                                                            label_file = label_file.absolute(), table_file = table_file.absolute(), subjects_dir = subjects_dir.absolute(), freesurfer_home = freesurfer_home, no_global=True)
+                    print(f'Beginning {i}/{len(aparc_labels_for_hemi)}: {hemi} {label_file.name.split(".")[-3:]}')
+                    mris_anatomical_stats = freesurfer_mris_anatomical_stats(subject_name=subject, hemisphere=hemi,
+                                                            label_file=label_file.absolute(), table_file=table_file.absolute(), 
+                                                            subjects_dir=subjects_dir.absolute(), freesurfer_home=freesurfer_home, no_global=True)
                 except:
                     pass
-                
-            for i, label_file in enumerate(subject_labels[subject]['dk_labels']):
+
+            # Similar change for DK labels
+            dk_labels_for_hemi = [label for label in subject_labels[subject]['dk_labels'] 
+                                if label.name.startswith(hemi)]
+            
+            for i, label_file in enumerate(dk_labels_for_hemi):
                 try:
                     table_file_folder = subjects_dir / subject / 'label' / 'label_stats' / 'aparc_labels_dk_stats'
                     table_file_folder.mkdir(parents=True, exist_ok=True)
