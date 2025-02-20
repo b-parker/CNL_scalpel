@@ -229,7 +229,6 @@ def freesurfer_label2label(
         print(f"Standard output: {e.stdout}")
         raise
 
-    
 def freesurfer_mris_label2annot(
     subject_id: str,
     hemi: str,
@@ -332,6 +331,65 @@ def freesurfer_mris_label2annot(
     # Optional arguments
     if ctab_file:
         cmd.extend(['--ctab', ctab_file])
+    
+    if label_files:
+        for lf in label_files:
+            cmd.extend(['--l', lf])
+    
+    if label_dir:
+        cmd.extend(['--ldir', label_dir])
+    
+    if use_default_label_dir:
+        cmd.append('--ldir-default')
+    
+    if no_unknown:
+        cmd.append('--no-unknown')
+    
+    if nhits_file:
+        cmd.extend(['--nhits', nhits_file])
+    
+    if offset is not None:
+        cmd.extend(['--offset', str(offset)])
+    
+    if max_stat_winner:
+        cmd.append('--maxstatwinner')
+    
+    if threshold is not None:
+        cmd.extend(['--thresh', str(threshold)])
+    
+    if surface:
+        cmd.extend(['--surf', surface])
+    
+    if no_verbose:
+        cmd.append('--noverbose')
+    
+    if debug:
+        cmd.append('--debug')
+    
+    # Log the command
+    cmd_str = ' '.join(cmd)
+    if debug:
+        print(f"Running command: {cmd_str}")
+    
+    # Execute command with error handling
+    try:
+        result = sp.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            env=env
+        )
+        if debug:
+            print("Command succeeded")
+            print(f"Output: {result.stdout}")
+        return result
+        
+    except sp.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Error output: {e.stderr}")
+        print(f"Standard output: {e.stdout}")
+        raise
 
 def freesurfer_annotation2label(
     subject_dir: str,

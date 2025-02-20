@@ -39,7 +39,7 @@ def main():
     dk_label_names = [subject_labels['100206']['dk_labels'][label_i].name.split('.')[-2] for label_i in range(len(subject_labels['100206']['dk_labels']))]
 
 
-    for subject in subject_list[:2]:
+    for subject in subject_list:
         print(f'Beginning mris_anatomical_stats for subject {subject}\n\n')
         for hemi in ['lh', 'rh']:
             aparc_labels_for_hemi = [label for label in subject_labels[subject]['aparc_labels'] 
