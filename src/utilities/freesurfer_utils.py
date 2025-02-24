@@ -98,6 +98,19 @@ def freesurfer_label2label(
     if trg_subject == 'ico' and trg_ico_order is None:
         raise ValueError("Target icosahedron order (--trgicoorder) is required when trg_subject is 'ico'")
     
+    if isinstance(src_label, str):
+        src_label = Path(src_label)
+    if not src_label.exists():
+        raise FileNotFoundError(f"Source label file not found: {src_label}")
+    
+    if isinstance(trg_label, str):
+        trg_label = Path(trg_label)
+    if not trg_label.exists():
+        raise FileNotFoundError(f"Target label file not found: {trg_label}")
+
+    if isinstance(subjects_dir, Path):
+        subjects_dir = str(subjects_dir)
+    
     # Find FreeSurfer home
     if freesurfer_home is None:
         freesurfer_home = os.environ.get('FREESURFER_HOME')
