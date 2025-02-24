@@ -2,7 +2,14 @@
 
 ## Use case
 
-CNL scalpel serves as a tool to slice ROIs in neuroimaging data using manually labeled landmarks on cortical surface reconstructions. The purpose is to improve individual level functional anlaysis by associating function with structurally analagous regions across individuals.
+scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python  
+
+inlcuded in the repo are
+
+- simple object-oriented design for interacting with fs subjects
+- interactive plotting in jupyter
+- ability to call freesurfer functions in python (label2label, label2annot, etc.)
+- segmentation of cortical surfaces (centroids, gyral gaps, gyral crowns, disjoint sulci, surface thresholding etc.)
 
 ## Requirements
 
