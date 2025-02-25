@@ -7,8 +7,9 @@ scalpel is a tool for easy interaction with freesurfer cortical surface reconstr
 inlcuded in the repo are
 
 - simple object-oriented design for interacting with fs subjects
+- reading, editing, and writing fs label files
 - interactive plotting in jupyter
-- ability to call freesurfer functions in python (label2label, label2annot, etc.)
+- ability to call several frequently used freesurfer functions (label2label, label2annot, mris_anatomical_stats etc.)
 - segmentation of cortical surfaces (centroids, gyral gaps, gyral crowns, disjoint sulci, surface thresholding etc.)
 
 ## Requirements
