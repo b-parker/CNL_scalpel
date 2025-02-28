@@ -2,7 +2,7 @@
 
 ## Use case
 
-scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python  
+scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
 
 inlcuded in the repo are
 
@@ -15,3 +15,14 @@ inlcuded in the repo are
 ## Requirements
 
 Install src files in virtual environment with  `pip install -e . --use-pep517` from the repo home directory
+
+
+## Overview
+
+### i/o for surfaces and labels
+
+### plotting
+
+### freesurfer functions
+
+### parcellation methods
