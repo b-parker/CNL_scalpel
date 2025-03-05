@@ -8,3 +8,6 @@ version = "0.0.0"
 
 [tool.setuptools]
 packages = ["src"]
+
+[project.scripts]
+setup-freesurfer = "src.utilities.setup_freesurfer:setup_freesurfer_environment"
