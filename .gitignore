@@ -24,7 +24,7 @@ venv/
 env/
 *.env
 
-# IDEs and editors
-.vscode/
-
+# other project folders
+.gitattributes
+src.egg-info/
 
