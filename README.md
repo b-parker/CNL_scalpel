@@ -1,22 +1,8 @@
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 
-CNL_scalpel
-`
-SCALPEL
-                 _---~~(~~-_.
-               _{        )   )
-             ,   ) -~~- ( ,-' )_
-            (  `-,_..`., )-- '_,)
-           ( ` _)  (  -~( -_ `,  }
-           (_-  _  ~_-~~~~`,  ,' )
-             `~ -^(    __;-,((()))
-                   ~~~~ {_ -_(())
-                          `\  }
-                            { }
-`
-## Use case
+#CNL_scalpel
 
-scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
+Scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
 
 inlcuded in the repo are
 
