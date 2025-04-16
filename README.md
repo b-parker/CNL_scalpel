@@ -14,7 +14,9 @@ inlcuded in the repo are
 
 ## Requirements
 
-Install src files in virtual environment with  `pip install -e . --use-pep517` from the repo home directory
+- Install src files in virtual environment with `pip install -e . --use-pep517` from the repo home directory
+- FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
+- FREESURFER_HOME is defined and has been added to your path
 
 
 ## Overview
