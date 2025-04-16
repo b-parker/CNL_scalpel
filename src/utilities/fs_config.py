@@ -9,7 +9,7 @@ def get_freesurfer_home():
     # First check environment
     fs_home = os.environ.get('FREESURFER_HOME')
     if fs_home:
-        return fs_home
+        return Path(fs_home)
     
     # Then check config file
     config_file = Path('.') / '.fs_config' / 'config.json'

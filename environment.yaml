@@ -95,6 +95,5 @@ dependencies:
   - zeromq=4.3.5=hcec6c5f_0
   - zlib=1.2.13=h4b97444_1
   - zstd=1.5.6=h138b38a_0
-  - pip:
-      - src==0.0.0
+  - pip
 prefix: /Users/benparker/miniconda3/envs/CNL_scalpel

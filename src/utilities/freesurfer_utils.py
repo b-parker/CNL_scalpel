@@ -574,7 +574,7 @@ def freesurfer_mris_anatomical_stats(
     hemisphere: str,
     subjects_dir: str,
     surface_name: Optional[str] = None,
-    thickness_range: Optional[tuple[float, float]] = None,
+    thickness_range: Optional[Tuple[float, float]] = None,
     label_file: Optional[Union[str, Path]] = None,
     thickness_file: Optional[Union[str, Path]] = None,
     annotation_file: Optional[Union[str, Path]] = None,
@@ -1362,6 +1362,7 @@ def get_gyrus(label_index: np.array, label_RAS: np.array, curv: np.array, curv_t
     return np.array(gyrus_index), np.array(gyrus_RAS)
 
 
+
 def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str, data_dir: Union[str, Path]) -> pd.DataFrame:
     """ 
     Takes a subject list and the location of a stats.txt file outputted by mris_anatomical_stats ->> converts it to a dataframe
@@ -1390,15 +1391,32 @@ def mris_anatomical_stats2DataFrame_row(subject: str, label_name: str, hemi: str
 
     with open(txt_path, 'r') as fp:
         new_surf = fp.readlines()
-    
-    row_stats = new_surf[-1]
-    row_stats = row_stats.split(' ')
-    row_stats = [i for i in row_stats if i != '']
-    label_name = row_stats[-1][:-1].split('.')[1]
 
-    num_rows =  [row_stats[0], row_stats[1], row_stats[2], row_stats[3], row_stats[4], row_stats[5], row_stats[6], row_stats[7], row_stats[8]]
-    num_rows = [float(i) for i in num_rows]
-    all_stats_row = [subject, hemi, label_name, num_rows[0], num_rows[1], num_rows[2], num_rows[3], num_rows[4], num_rows[5], num_rows[6], num_rows[7], num_rows[8]]
+    row_stats = new_surf[-1].split()
+    mris_stats = []
+    label = []
+
+    for element in row_stats:
+        try:
+            new_val = float(element)
+            mris_stats.append(new_val)
+        except:
+            element = element.split('/')[-1].split('.')[1]
+            label.append(element)
+    
+    all_stats_row = {'sub' : subject,
+                     'hemi' : hemi,
+                     'label' : label[0],
+                     'num_vertices' : mris_stats[0],
+                     'surface_area_mm^2' : mris_stats[1],
+                     'gray_matter_volume_mm^3' : mris_stats[2],
+                     'avg_cortical_thickness' : mris_stats[3],
+                     'avg_cortical_thickness_std' : mris_stats[4],
+                     'rectified_mean_curvature' : mris_stats[5],
+                     'rectified_gaussian_curvature' : mris_stats[6],
+                     'folding_index' : mris_stats[7],
+                     'intrinsic_curvature' : mris_stats[8]}
+    
     
     all_stats_df.loc[len(all_stats_df)] = all_stats_row
 
@@ -1442,6 +1460,9 @@ def subject_label_stats2DataFrame(subjects_dir: Union[str, Path], subject_list: 
                 data_dir = subjects_dir / sub / data_dir_from_subject_fs_dir 
                 if must_exist:
                     assert data_dir.exists(), f"{data_dir} does not exist"
+                    new_row = mris_anatomical_stats2DataFrame_row(sub, label, hemi, data_dir)
+                    print(new_row)
+                    all_stats_df = pd.concat([all_stats_df, new_row], axis = 0)
                 else:
                     try:
                         new_row = mris_anatomical_stats2DataFrame_row(sub, label, hemi, data_dir)

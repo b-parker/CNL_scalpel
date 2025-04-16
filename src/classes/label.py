@@ -10,7 +10,7 @@ class Label(object):
     
     """
     
-    def __init__(self, name, hemi, vertex_indexes=None, ras_coords=None, stat=None, custom_label_path=None):
+    def __init__(self, name, hemi, subject_id = None, subjects_dir = None, vertex_indexes=None, ras_coords=None, stat=None, custom_label_path=None):
         """
         Constructor for the Label class.
 
@@ -23,8 +23,10 @@ class Label(object):
         - stat (np.array, optional): Numpy array of statistical values. Defaults to None.
 
         """
-        self._name = name
+        self._label_name = name
         self._hemi = hemi
+        self._subject_id = subject_id
+        self._subjects_dir = subjects_dir
 
         if custom_label_path:
             self._vertex_indexes, self._ras_coords, self._stat = sfu.read_label(custom_label_path, include_stat = True)
@@ -36,12 +38,25 @@ class Label(object):
             self._stat = stat
             
     @property
-    def name(self) -> str:
-        return self._name
+    def label_name(self) -> str:
+        return self._label_name
     
     @property
     def hemi(self) -> str:
         return self._subject.hemi
+
+    @property
+    def subject(self) -> object:
+        """
+        Returns the subject object associated with this label.
+
+        Returns:
+        - ScalpelSubject: The subject object.
+        """
+        from src.classes.subject import ScalpelSubject
+        if not hasattr(self, '_subject'):
+            self._subject = ScalpelSubject(subject_id=self._subject_id, subjects_dir=self._subjects_dir, hemi=self._hemi)
+        return self._subject
     
     @property
     def vertex_indexes(self) -> np.array:
@@ -71,7 +86,7 @@ class Label(object):
     
     @cached_property
     def curv(self) -> np.array:
-        return self._subject.curv
+        return self.subject.curv
     
     def gyrus(self, curv_threshold=0) -> np.array:
         """
@@ -89,11 +104,11 @@ class Label(object):
         gyrus_RAS = []
 
         for point, RAS in zip(self._vertex_indexes, self._ras_coords):
-            if self._subject.curv[point] < curv_threshold:
+            if self.curv[point] < curv_threshold:
                 gyrus_index.append(point)
                 gyrus_RAS.append(RAS)
 
-        # return np.array(gyrus_index), np.array(gyrus_RAS)              
+        return np.array(gyrus_index), np.array(gyrus_RAS)              
 
     def sulcus(self, curv_threshold=0) -> np.array:
         """
@@ -111,7 +126,7 @@ class Label(object):
         sulcus_RAS = []
 
         for point, RAS in zip(self._vertex_indexes, self._ras_coords):
-            if self._subject.curv[point] > curv_threshold:
+            if self.curv[point] > curv_threshold:
                 sulcus_index.append(point)
                 sulcus_RAS.append(RAS)
 
@@ -125,6 +140,17 @@ class Label(object):
         - custom_label_path (str): Path to save the label.
 
         """
-        sfu.write_label(label_name, self._vertex_indexes, self._ras_coords, self._stat, custom_label_dir=label_dir_path, custom_label_name=custom_label_name)
+        if custom_label_name is None:
+            custom_label_name = label_name
+            
+        sfu.write_label(
+            label_name = label_name, 
+            label_indexes = self._vertex_indexes, 
+            label_RAS = self._ras_coords, 
+            hemi = self.subject.hemi,
+            subject_dir = self.subject.subjects_dir,
+            surface_type= self.subject.surface_type,
+            custom_label_dir = label_dir_path, 
+            )
     
     

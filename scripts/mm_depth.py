@@ -98,8 +98,8 @@ def calc_sulc(subjects, subjects_dir, hemis, sulc_list, output, fundus=True):
                 count += 1
                 print(count, ":", sulc)
                 mesh = isolate(subjects_dir, subject_hemi, sulc, sub, hemi)
-                if mesh is np.NaN:
-                    sulci_d = np.NaN
+                if mesh is np.nan:
+                    sulci_d = np.nan
                 else:
                     label_v = mesh[0]
                     sulci_d = depth(subject_hemi, label_v, fundus)
@@ -343,17 +343,16 @@ def main():
     """
     from pathlib import Path
     from src.utilities.freesurfer_utils import get_subjects_list
-    local_subjects_dir = "/Users/benparker/Desktop/cnl/neurocluster/Urgency/subjects"
-    subject_list = get_subjects_list("/Users/benparker/Desktop/cnl/neurocluster/Urgency/subjects/pcc_sub_list.txt", local_subjects_dir)
+    local_subjects_dir = "/Users/benparker/Desktop/cnl/neurocluster/weiner/HCP/subjects"
+    subject_list = get_subjects_list("/Users/benparker/Desktop/cnl/neurocluster/weiner/HCP/subject_lists/HCP_processed_subs_all.txt", local_subjects_dir)[:2]
     print(subject_list)
     # user: sets info here
     fundus = True
     subject_dir = "/home/weiner/Urgency/subjects"
-    sulc_list = ['2', '3', 'MCGS', 'POS', 'prcus1', 'prcus2', 'prcus3',
-       'prculs', 'sbps', 'sps', 'w', 'x', 'y', '1']  # what sulci do you want to check?
+    sulc_list = ['MCGS', 'POS']  # what sulci do you want to check?
     subject_list = [Path(i).name for i in subject_list]
     hemis = ["lh", "rh"]  # which hemis are you checking?
-    output = Outputs(fname="Urgency_pcc")  # what do you want the output name to be?
+    output = Outputs(fname="HCP_test")  # what do you want the output name to be?
     calc_sulc(subject_list, local_subjects_dir, hemis, sulc_list, output, fundus)
 
 

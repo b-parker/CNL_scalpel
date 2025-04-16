@@ -17,17 +17,18 @@ from src.utilities import geometry_utils
 from src.utilities.plotting import initialize_scene, plot, plot_label, remove_label, show_scene
 
 class ScalpelSubject(object):
-    def __init__(self, name, hemi, subjects_dir, surface_type="inflated"):
-        self._name = name
+    def __init__(self, subject_id, hemi, subjects_dir, surface_type="inflated"):
+        self._subject_id = subject_id
         self._hemi = hemi
         self._surface_type = surface_type
         self._labels = defaultdict(list)
-        self._subject_fs_path = Path(f'{subjects_dir}/{name}/')
+        self._subject_fs_path = Path(f'{subjects_dir}/{subject_id}/')
+        self._subjects_dir = subjects_dir
         self._scene = None
         self._mesh = {}
     
-        surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{name}/surf/{hemi}.{surface_type}')
-        self._curv = nb.freesurfer.read_morph_data(f'{subjects_dir}/{self._name}/surf/{self._hemi}.curv')
+        surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{subject_id}/surf/{hemi}.{surface_type}')
+        self._curv = nb.freesurfer.read_morph_data(f'{subjects_dir}/{self._subject_id}/surf/{self._hemi}.curv')
         self._ras_coords, self._faces = surface[0], surface[1]
         self._gyrus = fsu.get_gyrus(np.unique(self._faces), self._ras_coords, self._curv)
         self._sulcus = fsu.get_sulcus(np.unique(self._faces), self._ras_coords, self._curv)
@@ -36,14 +37,19 @@ class ScalpelSubject(object):
     # Properties
     ############################    
     @property
-    def name(self):
+    def subject_id(self):
         ## Subject ID
-        return self._name
+        return self._subject_id
 
     @property
     def hemi(self):
         ## Hemisphere
         return self._hemi
+
+    @property
+    def subjects_dir(self):
+        ## Subjects Directory
+        return self._subjects_dir
 
     @property
     def surface_type(self):
@@ -64,6 +70,27 @@ class ScalpelSubject(object):
     def vertex_indexes(self):
         ## Unique vertex indexes
         return np.unique(self.faces)
+
+    @cached_property
+    def pial_v(self):
+        ## Pial surface vertices | required to get sulcal depth
+        pial_path = f'{self.subject_fs_path}/surf/{self.hemi}.pial'
+        pial_verts, _ = nb.freesurfer.read_geometry(pial_path)
+        return pial_verts
+    
+    @cached_property
+    def gyrif_v(self):
+        ## Gyrus-inflated surface vertices (pial-outer-smoothed)
+        gyrif_path = f'{self.subject_fs_path}/surf/{self.hemi}.pial-outer-smoothed'
+        gyrif_verts, _ = nb.freesurfer.read_geometry(gyrif_path)
+        return gyrif_verts
+    
+    @cached_property
+    def sulc_vals(self):
+        ## Returns vertex-wise sulc values
+        sulc_path = f'{self.subject_fs_path}/surf/{self.hemi}.sulc'
+        sulc_vals= nb.freesurfer.read_morph_data(sulc_path)
+        return sulc_vals
 
     @property
     def subject_fs_path(self):
@@ -126,14 +153,14 @@ class ScalpelSubject(object):
         """
         if label_idxs is None or label_RAS is None:
             if custom_label_path is None:
-                self._labels[label_name] = Label(label_name, self.hemi, custom_label_path = f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
+                self._labels[label_name] = Label(label_name, self.hemi, subject_id=self.subject_id, subjects_dir = self._subjects_dir, custom_label_path = f'{self.subject_fs_path}/label/{self.hemi}.{label_name}.label')
     
             else:
                 if isinstance(custom_label_path, str):
                     custom_label_path = Path(custom_label_path)
-                self._labels[label_name] = Label(label_name, hemi = self.hemi, custom_label_path = custom_label_path)
+                self._labels[label_name] = Label(label_name, subject_id=self.subject_id, subjects_dir = self._subjects_dir,  hemi = self.hemi, custom_label_path = custom_label_path)
         else:
-            self._labels[label_name] = Label(label_name, hemi = self.hemi, vertex_indexes = label_idxs, ras_coords = label_RAS, stat = label_stat)
+            self._labels[label_name] = Label(label_name, subject_id = self.subject_id, subjects_dir = self._subjects_dir,  hemi = self.hemi, vertex_indexes = label_idxs, ras_coords = label_RAS, stat = label_stat)
     
     def remove_label(self, label_name):
         """
@@ -147,7 +174,7 @@ class ScalpelSubject(object):
         """
         self._labels.pop(label_name)
 
-    def write_label(self, label_name, custom_label_path):
+    def write_label(self, label_name, custom_label_path = None):
         """
         Write a label to a file.
 
@@ -158,7 +185,10 @@ class ScalpelSubject(object):
         Returns:
         - None
         """
-        self._labels[label_name].write_label(custom_label_path)
+
+        if custom_label_path is not None:
+            self._labels[label_name].write_label(label_name = label_name, custom_label_path = custom_label_path)
+        self._labels[label_name].write_label(label_name = label_name, label_dir_path = self.subject_fs_path / "label")
 
     ############################
     # Visualization Methods
@@ -401,18 +431,17 @@ class ScalpelSubject(object):
         Raises:
             ValueError: If labels don't exist or parameters are invalid.
         """
-        # Validate inputs
+
         if label1 not in self.labels or label2 not in self.labels:
             raise ValueError("Both labels must exist in the subject.")
 
-        # Perform boundary analysis
+        # Get boundary and cluster boundary vertices
         analysis1 = self.perform_boundary_analysis(label1, method, n_components, n_clusters, clustering_algorithm)
         analysis2 = self.perform_boundary_analysis(label2, method, n_components, n_clusters, clustering_algorithm)
 
         # Find closest clusters
         closest1, closest2, min_distance = self.find_closest_clusters(analysis1, analysis2)
 
-        # Find shared gyral clusters
         shared_clusters = self.find_shared_gyral_clusters(label1, label2)
 
         # Get shared gyral region
@@ -494,8 +523,82 @@ class ScalpelSubject(object):
                             label_RAS=self.labels[label_name].ras_coords[thresh_idx], label_stat=self.labels[label_name].label_stat[thresh_idx])
         
         return self.labels[label_name].vertex_indexes[thresh_idx], self.labels[label_name].ras_coords[thresh_idx], self.labels[label_name].label_stat[thresh_idx]
-
-
+    
+    ######
+    # Sulcal Measurements
+    ######
+    
+    def calculate_sulcal_depth(self, label_name, depth_pct=8, n_deepest=100, use_n_deepest=True):
+        """
+        Calculate the depth of a sulcus matching the MATLAB calcSulc_depth function.
         
+        Parameters:
+        -----------
+        label_name: str
+            Name of the label corresponding to the sulcus
+        depth_pct: float
+            Percentage of deepest vertices to use (default: 8, matching MATLAB default)
+        n_deepest: int
+            Number of deepest vertices to use (default: 100)
+        use_n_deepest: bool
+            If True, use n_deepest vertices; if False, use depth_pct percentage (default: True)
+                
+        Returns:
+        --------
+        float: The median depth of the sulcus in mm
 
-
+        NOTE: Rquires the pial and gyral-inflated surfaces to be generated with recon-all -all
+        """
+        try:
+            if label_name not in self._labels:
+                raise ValueError(f"Label '{label_name}' not found")
+                    
+            label_vertices = self._labels[label_name].vertex_indexes
+                
+            if not isinstance(label_vertices, np.ndarray):
+                label_vertices = np.array(label_vertices, dtype=int)
+                
+            sulc_map = self.sulc_vals
+            
+            label_sulc_values = sulc_map[label_vertices]
+                
+            sorted_indices = np.argsort(label_sulc_values)
+            sorted_sulc = np.sort(label_sulc_values)
+            
+            
+            num_vertices = len(sorted_indices)
+            
+            if use_n_deepest:
+                num_fundus = min(n_deepest, num_vertices) 
+            else:
+                num_fundus = int(np.ceil(num_vertices * depth_pct / 100))
+            
+            
+            fundus_indices = sorted_indices[-num_fundus:]
+            fundus_vertices = label_vertices[fundus_indices]
+                
+            # Calculate distances from pial to gyral-inflated surface
+            depths = []
+            for vertex_idx in fundus_vertices:
+                # Get coordinates of the vertex on the pial surface
+                v_xyz = self.pial_v[vertex_idx]
+                    
+                # Calculate distances to all gyral-inflated vertices
+                # NOTE: The gyral-inflated surface is generated with recon-all flag -all
+                distances = np.sqrt(np.sum((self.gyrif_v - v_xyz)**2, axis=1))
+                    
+                # Find minimum distance
+                min_distance = np.min(distances)
+                depths.append(min_distance)
+                
+            # Return median depth
+            if len(depths) > 0:
+                return np.median(depths)
+            else:
+                return np.nan
+                
+        except Exception as e:
+            print(f"Error calculating sulcal depth for {label_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return np.nan

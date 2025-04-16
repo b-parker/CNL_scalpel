@@ -4,6 +4,11 @@
 # Data and results directories
 /data/
 /results/
+/scripts/
+/.vscode
+/docs/
+/data/
+
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
