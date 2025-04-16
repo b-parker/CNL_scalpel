@@ -12,8 +12,9 @@ def freesurfer_home():
     if fs_home:
         return Path(fs_home)
     
-    # Return the mocked home directory
+    
 def test_freesurfer():
+    #Ensure FreeSurver is properly configured and bert exists
     assert get_freesurfer_home().exists(), "FREESURFER_HOME should exist"
     assert get_freesurfer_home().is_dir(), "FREESURFER_HOME should be a directory"
 
@@ -21,9 +22,9 @@ def test_freesurfer():
     assert "bert" in directory_listing, "Expected 'bert' directory in FreeSurfer home"
 
 def test_ScalpelSubject_load():
+    # Test loading a subject using ScalpelSubject with bert
     from src.classes.subject import ScalpelSubject
     
-    ## test loading bert
     subject_directory = Path(get_freesurfer_home()) / "subjects"
     subject = ScalpelSubject(subject_id="bert", subjects_dir = subject_directory, hemi = 'lh')
     assert subject.subject_id == "bert", "Expected subject ID to be 'bert'"
@@ -31,6 +32,7 @@ def test_ScalpelSubject_load():
     assert subject.gyrus[0] is not None, "Gyral components not properly identified"
 
 def test_ScalpelSubject_load_label():
+    # Test loading a label using ScalpelSubject with bert
     from src.classes.subject import ScalpelSubject
 
     subject_directory = Path(get_freesurfer_home()) / "subjects"    
