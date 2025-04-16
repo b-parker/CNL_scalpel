@@ -1,6 +1,6 @@
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 
-#CNL_scalpel
+# CNL_scalpel
 
 Scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
 
