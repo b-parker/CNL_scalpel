@@ -66,6 +66,7 @@ dependencies:
   - psutil=5.9.0=py310h46256e1_1
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
+  - pyglet=
   - pygments=2.15.1=py310hecd8cb5_1
   - pyparsing=3.2.0=py310hecd8cb5_0
   - python=3.10.16=hce00570_1

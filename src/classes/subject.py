@@ -10,6 +10,8 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN
 from scipy.spatial.distance import cdist
 
+import trimesh as tm
+
 from src.classes.label import Label
 from src.utilities import freesurfer_utils as fsu
 from src.utilities import surface_utils
@@ -102,7 +104,7 @@ class ScalpelSubject(object):
         gyrus_gray = [250, 250, 250]
         sulcus_gray = [130, 130, 130]
         if self.surface_type == 'inflated':
-            print('Initial plot builds cortical mesh (1 - 2 minutes)')
+            print('Initial plot builds cortical mesh (~1 minute)')
             gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
             sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
             self._mesh['gyrus'] = gyrus_mesh
@@ -126,6 +128,8 @@ class ScalpelSubject(object):
     @cached_property
     def sulcus(self):
         return self._sulcus
+    
+    
 
     @property
     def labels(self):
@@ -199,7 +203,7 @@ class ScalpelSubject(object):
             self.mesh
         if self._scene is None:
             self._scene = initialize_scene(self._mesh, view, self._hemi, self._surface_type)
-        return plot(self._scene, view, labels, self.plot_label)
+        return plot(scene = self._scene, hemi = self.hemi, view = view, labels = labels, plot_label_func = self.plot_label)
 
     def plot_label(self, label_name: str, view='lateral', label_ind=None, face_colors=None):
         assert label_name in self.labels, f"Label {label_name} not found in subject {self.subject_id}"
@@ -219,7 +223,6 @@ class ScalpelSubject(object):
         subject = ScalpelSubject(name, hemi, surface_type)
         return subject
     
-
     ############################
     # Gyral Analysis Methods
     ############################

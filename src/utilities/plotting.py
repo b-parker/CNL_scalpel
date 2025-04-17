@@ -43,18 +43,11 @@ def initialize_scene(mesh, view: str, hemi: str, surface_type: str):
     scene = None
     if surface_type == 'inflated':
         scene = tm.Scene([mesh['gyrus'], mesh['sulcus']])
-        apply_rotation(scene, view, hemi)
+        apply_rotation(scene, view, hemi, reset=True)  # Reset to original position
     else:
         scene = tm.Scene([mesh['cortex']])
-        apply_rotation(scene, view, hemi)
+        apply_rotation(scene, view, hemi, reset=True)  # Reset to original position
     return scene
-
-def plot(scene, view='lateral', labels: List[str] = None, plot_label_func=None):
-    ## Plot the surface
-    if labels:
-        for label in labels:
-            plot_label_func(label, view = view)
-    return scene.show()
 
 def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hemi: str, face_colors=None, label_ind=None):
     ## Convenience method to plot a label on the surface
@@ -64,12 +57,24 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
         face_colors = np.random.randint(0, 255, 3)
     if label_ind is None and label_name in labels:
         label_ind = labels[label_name].vertex_indexes
-
-    face_colors = np.array(face_colors).astype(int)
-    label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
-    apply_rotation(label_mesh, view, hemi)
+        face_colors = np.array(face_colors).astype(int)
+        label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
     
     scene.add_geometry(label_mesh, geom_name=label_name)
+    
+    apply_rotation(scene, view, hemi, reset=True)
+    
+    return scene.show()
+
+def plot(scene, hemi, view='lateral', labels: List[str] = None, plot_label_func=None):
+    # Reset the scene to the requested view
+    apply_rotation(scene, view, hemi, reset=True)
+    
+    # Plot the surface
+    if labels:
+        for label in labels:
+            plot_label_func(label, view=view)
+    
     return scene.show()
 
 def remove_label(scene, label_name: str):
@@ -78,14 +83,94 @@ def remove_label(scene, label_name: str):
         raise ValueError(f"Label {label_name} not found in scene.")
     scene.delete_geometry(label_name)
 
-def apply_rotation(object_mesh, view: str, hemi: str):
-    if (hemi == 'lh' and view == 'lateral') or (hemi == 'rh' and view == 'medial'):
-        object_mesh.apply_transform(tm.transformations.rotation_matrix(np.pi/2, [0, 0, 1]))
-        object_mesh.apply_transform(tm.transformations.rotation_matrix(3*np.pi/2, [1, 0, 0]))
-    if (hemi == 'lh' and view == 'medial') or (hemi == 'rh' and view == 'lateral'):
-        object_mesh.apply_transform(tm.transformations.rotation_matrix(-np.pi/2, [0, 0, 1]))
-        object_mesh.apply_transform(tm.transformations.rotation_matrix(3*np.pi/2, [1, 0, 0]))
+def apply_rotation(object_mesh, view: str, hemi: str, reset: bool = False):
+    """Apply rotation to mesh based on view and hemisphere.
+    
+    Parameters:
+    -----------
+    object_mesh : trimesh.Trimesh or trimesh.Scene
+        The mesh or scene to transform
+    view : str
+        Desired view ('lateral', 'medial', 'ventral', 'dorsal')
+    hemi : str
+        Hemisphere ('lh' for left, 'rh' for right)
+    reset : bool, default=False
+        Whether to reset the mesh to its original position before applying new rotation
+    """
+    if reset:
+        if isinstance(object_mesh, tm.Trimesh):
+            if not hasattr(object_mesh, 'metadata'):
+                object_mesh.metadata = {}
+            if 'original_vertices' not in object_mesh.metadata:
+                object_mesh.metadata['original_vertices'] = object_mesh.vertices.copy()
+            else:
+                object_mesh.vertices = object_mesh.metadata['original_vertices'].copy()
+        elif hasattr(object_mesh, 'geometry'):
+            for geom_name, geom in object_mesh.geometry.items():
+                if not hasattr(geom, 'metadata'):
+                    geom.metadata = {}
+                if 'original_vertices' not in geom.metadata:
+                    geom.metadata['original_vertices'] = geom.vertices.copy()
+                else:
+                    geom.vertices = geom.metadata['original_vertices'].copy()
+    
 
+    rotations = {
+        ('lh', 'lateral'): [
+            tm.transformations.rotation_matrix(np.pi/2, [0, 1, 0]),
+            tm.transformations.rotation_matrix(np.pi/2, [0, 0, 1])
+        ],
+        ('rh', 'lateral'): [
+            tm.transformations.rotation_matrix(-np.pi/2, [0, 1, 0]),
+            tm.transformations.rotation_matrix(3*np.pi/2, [0, 0, 1])
+        ],
+        
+        ('lh', 'medial'): [
+            tm.transformations.rotation_matrix(-np.pi/2, [0, 1, 0]),
+            tm.transformations.rotation_matrix(-np.pi/2, [0, 0, 1])
+        ],
+        ('rh', 'medial'): [
+            tm.transformations.rotation_matrix(np.pi/2, [0, 1, 0]),
+            tm.transformations.rotation_matrix(np.pi/2, [0, 0, 1])
+        ],
+        
+        ('lh', 'ventral'): [
+            tm.transformations.rotation_matrix(-np.pi, [0, 1, 0]),
+            tm.transformations.rotation_matrix(0, [0, 0, 1]) 
+        ],
+        ('rh', 'ventral'): [
+            tm.transformations.rotation_matrix(np.pi, [0, 1, 0]),
+            tm.transformations.rotation_matrix(0, [0, 0, 1])
+        ],
+        
+        ('lh', 'dorsal'): [
+            tm.transformations.rotation_matrix(0, [1, 0, 0]),
+            tm.transformations.rotation_matrix(0, [0, 0, 1])
+        ],
+        ('rh', 'dorsal'): [
+            tm.transformations.rotation_matrix(0, [1, 0, 0]),
+            tm.transformations.rotation_matrix(0, [0, 0, 1])
+        ]
+    }
+    
+    key = (hemi, view)
+    if key in rotations:
+        rotation_matrices = rotations[key]
+        
+        if not isinstance(rotation_matrices, list):
+            rotation_matrices = [rotation_matrices]
+        
+        for rotation_matrix in rotation_matrices:
+            if isinstance(object_mesh, tm.Trimesh):
+                object_mesh.apply_transform(rotation_matrix)
+            elif hasattr(object_mesh, 'geometry'):
+                for geom_name, geom in object_mesh.geometry.items():
+                    geom.apply_transform(rotation_matrix)
+            else:
+                raise ValueError("Object must be either a Trimesh or Scene")
+    else:
+        raise ValueError(f"Unsupported view/hemisphere combination: {view}/{hemi}")
+    
 def show_scene(scene):
     ## Plot the scene
     if scene:
