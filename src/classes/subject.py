@@ -202,6 +202,7 @@ class ScalpelSubject(object):
         return plot(self._scene, view, labels, self.plot_label)
 
     def plot_label(self, label_name: str, view='lateral', label_ind=None, face_colors=None):
+        assert label_name in self.labels, f"Label {label_name} not found in subject {self.subject_id}"
         if self._scene is None:
             if self._mesh == {}:
                 self.mesh

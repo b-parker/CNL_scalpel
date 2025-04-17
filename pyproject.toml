@@ -3,11 +3,23 @@ requires = ["setuptools>=64.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "src"
+name = "CNL_scalpel"
 version = "0.0.0"
+requires-python = ">=3.9"
+description = "Python package for FreeSurfer and neuroanatomical research"
+authors = [
+  { name="Ben Parker", email="benparker@berkeley.edu" },
+]
+license = "MIT"
+
 
 [tool.setuptools]
 packages = ["src"]
 
 [project.scripts]
 setup-freesurfer = "src.utilities.setup_freesurfer:setup_freesurfer_environment"
+
+[project.urls]
+Homepage = "https://github.com/b-parker/CNL_scalpel/"
+Issues = "https://github.com/b-parker/CNL_scalpel/issues"
+readme = "README.md"
