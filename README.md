@@ -13,7 +13,8 @@ inlcuded in the repo are
 - ability to call several frequently used freesurfer functions (label2label, label2annot, mris_anatomical_stats etc.)
 
 ## Requirements
-
+- cd to cloned github repo & create a virtual environment for CNL_scalpel `conda env create -f environment.yaml`
+- `conda activate CNL_scalpel`
 - Install src files in virtual environment with `pip install -e . --use-pep517` from the repo home directory
 - FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
 - FREESURFER_HOME is defined and has been added to your path
@@ -37,7 +38,7 @@ Before using this code, you need to have FreeSurfer installed and set up properl
 Let's start by creating a ScalpelSubject instance:
 
 ```python
-from src.classes.scalpel_subject import ScalpelSubject
+from src.classes.subject import ScalpelSubject
 
 # Initialize a subject
 subject = ScalpelSubject(
@@ -68,11 +69,11 @@ vertex_indices = subject.vertex_indexes  # Unique vertex indices
 # Anatomical data
 thickness = subject.thickness  # Cortical thickness values
 curv = subject.curv           # Curvature values
-sulc = subject.sulc_vals      # Sulcal depth values
+sulc = subject.sulc_vals      # Sulcal surface values
 
 # Get gyrus and sulcus vertices
-gyrus_vertices = subject.gyrus[0]
-sulcus_vertices = subject.sulcus[0]
+gyrus_vertices, gyrus_ras = subject.gyrus[0] subject.gyrus[1]
+sulcus_vertices, sulcus_ras = subject.sulcus[0], subject.gyrus[1]
 ```
 
 ## Visualization Methods
@@ -83,8 +84,6 @@ The ScalpelSubject class provides methods for visualizing the brain surface and 
 # Plot the brain surface
 subject.plot(view='lateral')  # Options: lateral, medial, dorsal, ventral
 
-# Show the current scene
-subject.show()
 ```
 
 ![A](./assets/scalpel_lateral_inflated_plot.png)
@@ -150,33 +149,6 @@ subject.remove_label('label_name')
 
 # Write a label to a file
 subject.write_label('label_name')
-```
-
-## Boundary Analysis
-
-The ScalpelSubject class provides methods for analyzing the boundaries between regions:
-
-```python
-# Perform boundary analysis on a label
-analysis = subject.perform_boundary_analysis(
-    'label_name',
-    method='pca',             # Analysis method: 'pca' or 'direct'
-    n_components=2,           # Number of PCA components
-    n_clusters=[2, 3],        # Number of clusters
-    clustering_algorithm='agglomerative'  # Clustering algorithm
-)
-
-# Boundary vertices
-boundary_vertices = analysis['boundary']
-boundary_coords = analysis['boundary_ras']
-
-# Cluster results
-clusters = analysis['cluster_results']
-
-# Find closest clusters between two labels
-analysis1 = subject.perform_boundary_analysis('label1')
-analysis2 = subject.perform_boundary_analysis('label2')
-closest1, closest2, min_distance = subject.find_closest_clusters(analysis1, analysis2)
 ```
 
 ## Gyral Clustering
