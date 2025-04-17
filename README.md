@@ -151,33 +151,6 @@ subject.remove_label('label_name')
 subject.write_label('label_name')
 ```
 
-## Boundary Analysis
-
-The ScalpelSubject class provides methods for analyzing the boundaries between regions:
-
-```python
-# Perform boundary analysis on a label
-analysis = subject.perform_boundary_analysis(
-    'label_name',
-    method='pca',             # Analysis method: 'pca' or 'direct'
-    n_components=2,           # Number of PCA components
-    n_clusters=[2, 3],        # Number of clusters
-    clustering_algorithm='agglomerative'  # Clustering algorithm
-)
-
-# Boundary vertices
-boundary_vertices = analysis['boundary']
-boundary_coords = analysis['boundary_ras']
-
-# Cluster results
-clusters = analysis['cluster_results']
-
-# Find closest clusters between two labels
-analysis1 = subject.perform_boundary_analysis('label1')
-analysis2 = subject.perform_boundary_analysis('label2')
-closest1, closest2, min_distance = subject.find_closest_clusters(analysis1, analysis2)
-```
-
 ## Gyral Clustering
 
 The ScalpelSubject class provides methods for clustering gyral regions:
