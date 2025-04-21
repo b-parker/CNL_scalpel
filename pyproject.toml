@@ -14,7 +14,7 @@ license = "MIT"
 
 
 [tool.setuptools]
-packages = ["src"]
+packages = ["src, src.scalpel"]
 
 [project.scripts]
 setup-freesurfer = "src.utilities.setup_freesurfer:setup_freesurfer_environment"
