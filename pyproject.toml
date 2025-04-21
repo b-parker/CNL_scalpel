@@ -3,7 +3,7 @@ requires = ["setuptools>=64.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "CNL_scalpel"
+name = "scalpel"
 version = "0.0.0"
 requires-python = ">=3.9"
 description = "Python package for FreeSurfer and neuroanatomical research"
@@ -12,12 +12,12 @@ authors = [
 ]
 license = "MIT"
 
-
-[tool.setuptools]
-packages = ["src, src.scalpel"]
+tool.setuptools]
+packages = {find = {where = ["src"]}}
+package-dir = {"" = "src"}
 
 [project.scripts]
-setup-freesurfer = "src.utilities.setup_freesurfer:setup_freesurfer_environment"
+setup-freesurfer = "src.scalpel.utilities.setup_freesurfer:setup_freesurfer_environment"
 
 [project.urls]
 Homepage = "https://github.com/b-parker/CNL_scalpel/"
