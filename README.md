@@ -29,10 +29,6 @@ The ScalpelSubject class provides a comprehensive set of tools for analyzing bra
 - Performing clustering of gyral regions
 - Measuring sulcal depth
 
-## Installation
-
-Before using this code, you need to have FreeSurfer installed and set up properly. You'll also need several Python packages. These are can be installed from environment.yaml.
-
 ## Basic Usage
 
 Let's start by creating a ScalpelSubject instance:
