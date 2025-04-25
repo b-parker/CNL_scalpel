@@ -12,7 +12,7 @@ authors = [
 ]
 license = "MIT"
 
-tool.setuptools]
+[tool.setuptools]
 packages = {find = {where = ["src"]}}
 package-dir = {"" = "src"}
 

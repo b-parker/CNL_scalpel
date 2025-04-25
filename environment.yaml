@@ -102,5 +102,4 @@ dependencies:
   - pip:
       - cython==3.0.12
       - pyglet==1.5.31
-      - src==0.0.0
 prefix: /Users/benparker/miniconda3/envs/CNL_scalpel

@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: scalpel
+Version: 0.0.0
+Summary: Python package for FreeSurfer and neuroanatomical research
+Author-email: Ben Parker <benparker@berkeley.edu>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/b-parker/CNL_scalpel/
+Project-URL: Issues, https://github.com/b-parker/CNL_scalpel/issues
+Project-URL: readme, README.md
+Requires-Python: >=3.9
+License-File: LICENSE
+Dynamic: license-file
