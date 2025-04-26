@@ -13,9 +13,10 @@ inlcuded in the repo are
 - ability to call several frequently used freesurfer functions (label2label, label2annot, mris_anatomical_stats etc.)
 
 ## Requirements
-- cd to cloned github repo & create a virtual environment for CNL_scalpel `conda env create -f environment.yaml`
+
+- cd to cloned github repo & create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
 - `conda activate CNL_scalpel`
-- Install src files in virtual environment with `pip install -e . --use-pep517` from the repo home directory
+-  from the repo home directory
 - FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
 - FREESURFER_HOME is defined and has been added to your path
 
