@@ -1,7 +1,7 @@
 import pytest
 import os
 from pathlib import Path
-from src.utilities.fs_config import get_freesurfer_home
+from scalpel.utilities.fs_config import get_freesurfer_home
 
 
 
@@ -23,7 +23,7 @@ def test_freesurfer():
 
 def test_ScalpelSubject_load():
     # Test loading a subject using ScalpelSubject with bert
-    from src.classes.subject import ScalpelSubject
+    from scalpel.subject import ScalpelSubject
     
     subject_directory = Path(get_freesurfer_home()) / "subjects"
     subject = ScalpelSubject(subject_id="bert", subjects_dir = subject_directory, hemi = 'lh')
@@ -33,7 +33,7 @@ def test_ScalpelSubject_load():
 
 def test_ScalpelSubject_load_label():
     # Test loading a label using ScalpelSubject with bert
-    from src.classes.subject import ScalpelSubject
+    from scalpel.subject import ScalpelSubject
 
     subject_directory = Path(get_freesurfer_home()) / "subjects"    
     print(subject_directory.resolve())

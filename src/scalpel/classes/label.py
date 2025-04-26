@@ -1,6 +1,6 @@
 from functools import cached_property
 import numpy as np
-import src.utilities.freesurfer_utils as sfu
+import scalpel.utilities.freesurfer_utils as sfu
 import trimesh as tm
 
 
@@ -53,7 +53,7 @@ class Label(object):
         Returns:
         - ScalpelSubject: The subject object.
         """
-        from src.classes.subject import ScalpelSubject
+        from scalpel.subject import ScalpelSubject
         if not hasattr(self, '_subject'):
             self._subject = ScalpelSubject(subject_id=self._subject_id, subjects_dir=self._subjects_dir, hemi=self._hemi)
         return self._subject

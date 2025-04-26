@@ -27,4 +27,5 @@ env/
 # other project folders
 .gitattributes
 src.egg-info/
+scalpel.egg-info/
 

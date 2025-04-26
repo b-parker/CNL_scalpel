@@ -12,11 +12,11 @@ from scipy.spatial.distance import cdist
 
 import trimesh as tm
 
-from src.classes.label import Label
-from src.utilities import freesurfer_utils as fsu
-from src.utilities import surface_utils
-from src.utilities import geometry_utils
-from src.utilities.plotting import initialize_scene, plot, plot_label, remove_label, show_scene
+from scalpel.classes.label import Label
+from scalpel.utilities import freesurfer_utils as fsu
+from scalpel.utilities import surface_utils
+from scalpel.utilities import geometry_utils
+from scalpel.utilities.plotting import initialize_scene, plot, plot_label, remove_label, show_scene
 
 class ScalpelSubject(object):
     def __init__(self, subject_id, hemi, subjects_dir, surface_type="inflated"):

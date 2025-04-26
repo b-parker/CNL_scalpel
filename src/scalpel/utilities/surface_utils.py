@@ -22,14 +22,14 @@ from nibabel.freesurfer.io import read_annot, read_label, read_morph_data, read_
 # Plotting1=--0
 import matplotlib.pyplot as plt
 
-from src.utilities.utility_funcs import mris_convert_command
+from scalpel.utilities.utility_funcs import mris_convert_command
 
 # Meshes
 import trimesh as tm
 import networkx as nx
 #import meshplot 
-from src.utilities.freesurfer_utils import *
-from src.utilities import geometry_utils
+from scalpel.utilities.freesurfer_utils import *
+from scalpel.utilities import geometry_utils
 
 
 
@@ -218,7 +218,7 @@ def getDistMatrix(subjects_dir=str, labels=list, sub=str, hemi=str, savedir=str,
 # Use boundary sulci to capture all vertices in surface between boundaries, and plot
 
 import functools
-from src.utilities.utility_funcs import memoize
+from scalpel.utilities.utility_funcs import memoize
 
 class ScalpelSurface:
     """
@@ -715,7 +715,7 @@ def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, he
     roi_label_points = all_points[roi_label_ind]
     return [roi_label_ind, roi_label_points]
 
-from src.utilities.surface_utils import get_label_subsets
+from scalpel.utilities.surface_utils import get_label_subsets
 
 def sort_sets_by_position(label_sets, points, direction):
     """
