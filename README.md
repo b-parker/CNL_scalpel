@@ -35,7 +35,7 @@ The ScalpelSubject class provides a comprehensive set of tools for analyzing bra
 Let's start by creating a ScalpelSubject instance:
 
 ```python
-from src.classes.subject import ScalpelSubject
+from scalpel.subject import ScalpelSubject
 
 # Initialize a subject
 subject = ScalpelSubject(
