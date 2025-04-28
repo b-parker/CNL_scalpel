@@ -14,7 +14,8 @@ inlcuded in the repo are
 
 ## Requirements
 
-- cd to cloned github repo & create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
+- cd to cloned github repo
+- create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
 - `conda activate CNL_scalpel`
 -  from the repo home directory `pip install -e .`
 - FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
