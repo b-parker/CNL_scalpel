@@ -8,6 +8,7 @@
 /.vscode
 /docs/
 /data/
+/notebookes/
 
 
 # Jupyter Notebooks
@@ -26,6 +27,6 @@ env/
 
 # other project folders
 .gitattributes
-src.egg-info/
-scalpel.egg-info/
+src.egg-info
+scalpel.egg-info
 

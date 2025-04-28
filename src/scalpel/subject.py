@@ -223,6 +223,16 @@ class ScalpelSubject(object):
         subject = ScalpelSubject(name, hemi, surface_type)
         return subject
     
+    def save_plot(self, filename: str):
+        """
+        Save the trimesh Scene to file
+
+        """
+        if self._scene is None:
+            raise ValueError("Scene not initialized. Please call plot() first.")
+
+        self._scene.save_image(filename, width=800, height=600, visible=True)     
+    
     ############################
     # Gyral Analysis Methods
     ############################
@@ -460,10 +470,186 @@ class ScalpelSubject(object):
             'shared_gyral_index': shared_index,
             'shared_gyral_ras': shared_ras
         }
-    
-    def label_centroid(self, label_name: str, load = True, centroid_face = False) -> Tuple[np.ndarray, np.ndarray]:
+    def analyze_sulcal_gyral_relationships(self, label_name, gyral_clusters=300, sulcal_clusters=None, 
+                                      algorithm='kmeans', load_results=True):
         """
-        Compute the centroid of a label.
+        Comprehensive analysis of sulcal-gyral relationships:
+        1) Clusters the gyri
+        2) Clusters the sulci
+        3) For each sulcal cluster, finds adjacent gyral clusters
+        4) Gets centroids of all clusters
+        5) Determines anterior/posterior relationships
+        
+        Parameters:
+            label_name (str): Name of the sulcal label
+            gyral_clusters (int): Number of clusters for gyral clustering
+            sulcal_clusters (int): Number of clusters for sulcal clustering
+            algorithm (str): Clustering algorithm ('kmeans', 'agglomerative', or 'dbscan')
+            load_results (bool): Whether to load result labels in the subject
+            
+        Returns:
+            dict: Complete analysis results
+        """
+        if sulcal_clusters is None:
+            sulcal_clusters = self.subject.labels[label_name].vertex_indexes.shape[0] // 400
+
+       
+        if label_name not in self.labels:
+            raise ValueError(f"Sulcal label '{label_name}' not found in self")
+        
+        results = {
+            'sulcal_clusters': {},
+            'gyral_clusters': {},
+            'adjacency_map': {},
+            'anterior_gyri': [],
+            'posterior_gyri': []
+        }
+        
+        # Cluster the gyri
+        if not hasattr(self, 'gyral_clusters') or self.gyral_clusters is None:
+            gyral_cluster_assignments = self.perform_gyral_clustering(
+                n_clusters=gyral_clusters, algorithm=algorithm)
+        else:
+            gyral_cluster_assignments = self.gyral_clusters
+        
+       
+        unique_gyral_clusters = np.unique(gyral_cluster_assignments)
+        
+
+        for cluster_id in unique_gyral_clusters:
+            cluster_indices = np.where(gyral_cluster_assignments == cluster_id)[0]
+            cluster_vertices = self.gyrus[0][cluster_indices]
+            cluster_ras = self.ras_coords[cluster_vertices]
+            centroid = np.mean(cluster_ras, axis=0)
+            
+            results['gyral_clusters'][cluster_id] = {
+                'vertices': cluster_vertices,
+                'ras_coords': cluster_ras,
+            }
+        
+        # Cluster the sulcus
+        sulcus_vertices = self.labels[label_name].vertex_indexes
+        sulcus_ras = self.ras_coords[sulcus_vertices]
+        
+        
+        if algorithm == 'kmeans':
+            from sklearn.cluster import KMeans
+            sulcal_clustering = KMeans(n_clusters=sulcal_clusters, random_state=42, n_init="auto")
+        elif algorithm == 'agglomerative':
+            from sklearn.cluster import AgglomerativeClustering
+            sulcal_clustering = AgglomerativeClustering(n_clusters=sulcal_clusters)
+        elif algorithm == 'dbscan':
+            from sklearn.cluster import DBSCAN
+            sulcal_clustering = DBSCAN(eps=0.5, min_samples=5)
+        else:
+            raise ValueError("Unsupported clustering algorithm")
+        
+        sulcal_cluster_assignments = sulcal_clustering.fit_predict(sulcus_ras)
+        unique_sulcal_clusters = np.unique(sulcal_cluster_assignments)
+        
+        
+        for cluster_id in unique_sulcal_clusters:
+            cluster_indices = np.where(sulcal_cluster_assignments == cluster_id)[0]
+            cluster_vertices = sulcus_vertices[cluster_indices]
+            cluster_ras = sulcus_ras[cluster_indices]
+            centroid = np.mean(cluster_ras, axis=0)
+            
+            
+            if load_results:
+                cluster_label_name = f"{label_name}_cluster_{cluster_id}"
+                self.load_label(cluster_label_name, 
+                                label_idxs=cluster_vertices, 
+                                label_RAS=cluster_ras)
+            
+            results['sulcal_clusters'][cluster_id] = {
+                'vertices': cluster_vertices,
+                'ras_coords': cluster_ras,
+                'centroid': centroid
+            }
+        
+        # For each sulcal cluster, find adjacent gyral clusters
+        for sulcal_id in results['sulcal_clusters']:
+           
+            sulcal_cluster_vertices = results['sulcal_clusters'][sulcal_id]['vertices']
+            
+            
+            sulcal_faces = geometry_utils.get_faces_from_vertices(self.faces, sulcal_cluster_vertices)
+            sulcal_boundary = surface_utils.find_label_boundary(sulcal_faces)
+            
+            
+            boundary_neighbors = set()
+            for face in self.faces:
+                if any(v in sulcal_boundary for v in face):
+                    boundary_neighbors.update(face)
+            
+            
+            all_sulcal_vertices = set(sulcus_vertices)
+            boundary_neighbors = boundary_neighbors - all_sulcal_vertices
+            
+            
+            gyral_vertices = set(self.gyrus[0])
+            adjacent_gyral_vertices = np.array(list(boundary_neighbors & gyral_vertices), dtype=int)
+            
+         
+            adjacent_gyral_clusters = set()
+            for v in adjacent_gyral_vertices:
+                gyral_idx = np.where(self.gyrus[0] == v)[0]
+                if len(gyral_idx) > 0:
+                    cluster = gyral_cluster_assignments[gyral_idx[0]]
+                    adjacent_gyral_clusters.add(cluster)
+            
+            results['adjacency_map'][sulcal_id] = list(adjacent_gyral_clusters)
+            
+            #  Compare centroid RAS to determine anterior/posterior relationship
+            sulcal_centroid = self.label_centroid(label_name, load = False, custom_vertexes = results['sulcal_clusters'][sulcal_id]['ras_coords'])
+            
+            for gyral_id in adjacent_gyral_clusters:
+                gyral_centroid = self.label_centroid(label_name, load = False, custom_vertexes = results['gyral_clusters'][gyral_id]['ras_coords'])
+                
+                
+                is_anterior = gyral_centroid[1] > sulcal_centroid[1]
+                
+                if is_anterior:
+                    if gyral_id not in results['anterior_gyri']:
+                        results['anterior_gyri'].append(gyral_id)
+                else:
+                    if gyral_id not in results['posterior_gyri']:
+                        results['posterior_gyri'].append(gyral_id)
+        
+        # save new labels to subject 
+        if load_results: 
+            if results['anterior_gyri']:
+                anterior_vertices = []
+                for gyral_id in results['anterior_gyri']:
+                    anterior_vertices.extend(results['gyral_clusters'][gyral_id]['vertices'])
+                anterior_vertices = np.unique(anterior_vertices)
+                anterior_ras = self.ras_coords[anterior_vertices]
+                
+                self.load_label(f"{label_name}_anterior_gyri", 
+                                label_idxs=anterior_vertices, 
+                                label_RAS=anterior_ras)
+                
+                print(f"Created anterior gyri label with {len(anterior_vertices)} vertices")
+            
+            
+            if results['posterior_gyri']:
+                posterior_vertices = []
+                for gyral_id in results['posterior_gyri']:
+                    posterior_vertices.extend(results['gyral_clusters'][gyral_id]['vertices'])
+                posterior_vertices = np.unique(posterior_vertices)
+                posterior_ras = self.ras_coords[posterior_vertices]
+                
+                self.load_label(f"{label_name}_posterior_gyri", 
+                                label_idxs=posterior_vertices, 
+                                label_RAS=posterior_ras)
+                
+                print(f"Created posterior gyri label with {len(posterior_vertices)} vertices")
+        
+        return results
+    
+    def label_centroid(self, label_name: str, load = True, centroid_face = False, custom_vertexes = None) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute the centroid of a label. Computes weighted average of vertices in the label and finds the closest surface vertex to the centroid.
 
         Parameters:
             label_name (str): Name of the label.
@@ -472,17 +658,22 @@ class ScalpelSubject(object):
         Returns:
             np.ndarray: Centroid coordinates.
         """
+        # Identify vertices
+        if custom_vertexes is not None:
+            label_faces = geometry_utils.get_faces_from_vertices(self.faces, custom_vertexes)
+            label_faces_ind = np.where(np.isin(self.faces, custom_vertexes))[0] 
+            label_faces = self.faces[label_faces_ind]
+        else: 
 
-        # get the faces associate with the label
-        label_faces_ind = np.where(np.isin(self.faces, self.labels[label_name].vertex_indexes))[0]
-        label_faces = self.faces[label_faces_ind]
+            label_faces_ind = np.where(np.isin(self.faces, self.labels[label_name].vertex_indexes))[0]
+            label_faces = self.faces[label_faces_ind]
 
-        # Calculate centroid 
+        # Calculate centroid as weighted average of vertices
         centroid_ras = surface_utils.calculate_geometric_centroid(self.ras_coords, label_faces)
+        # Find closest surface vertex to the centroid
         centroid_surface_vertex = surface_utils.find_closest_vertex(centroid_ras, self.ras_coords)[0]
         centroid_surface_ras = self.ras_coords[centroid_surface_vertex]
 
-        # If getting the faces, return the faces and the centroid
         if centroid_face:
             centroid_faces = self.faces[np.where(np.isin(self.faces, centroid_surface_vertex))[0]]
             centroid_faces_vertices = np.array([np.unique(self.faces[centroid_faces])])
@@ -515,7 +706,7 @@ class ScalpelSubject(object):
 
 
         try:
-            thresh_idx = np.argwhere(self.labels[label_name].label_stat > threshold).flatten()
+            thresh_idx = self.labels[label_name].label_stat[self.labels[label_name].label_stat > threshold].index.to_numpy()
         except ValueError:
             print(f"Label {label_name} not found")
             
@@ -528,6 +719,92 @@ class ScalpelSubject(object):
         
         return self.labels[label_name].vertex_indexes[thresh_idx], self.labels[label_name].ras_coords[thresh_idx], self.labels[label_name].label_stat[thresh_idx]
     
+    def get_deepest_sulci(self, percentage=10, label_name=None, return_mask=False, load_label=False, result_label_name=None):
+        """
+        Returns indices or a mask of vertices corresponding to the specified percentage 
+        of deepest sulci (highest sulc values), either within a specific label or across the entire brain.
+        
+        Parameters:
+        -----------
+        percentage : float
+            Percentage of deepest sulci to include (default: 10)
+        label_name : str or None
+            If provided, looks for deepest sulci within this label; if None, looks across the whole brain
+        return_mask : bool
+            If True, returns a boolean mask; if False, returns indices (default: False)
+        load_label : bool
+            If True, creates a label for the deepest sulci (default: False)
+        result_label_name : str
+            Name for the created label if load_label is True (default: 'deepest_sulci_{percentage}' or '{label_name}_deepest_{percentage}')
+            
+        Returns:
+        --------
+        numpy.ndarray
+            Either boolean mask where True values represent vertices in the deepest sulci,
+            or array of vertex indices of the deepest sulci
+        """
+        # Get all sulcal depth values
+        sulc = self.sulc_vals
+        
+        if label_name is not None:
+            # Check if the label exists
+            if label_name not in self.labels:
+                raise ValueError(f"Label '{label_name}' not found in subject")
+            
+            # Get vertex indices from the label
+            label_indices = self.labels[label_name].vertex_indexes
+            
+            # Extract sulc values only for these vertices
+            label_sulc = sulc[label_indices]
+            
+            # Calculate the threshold value for the top percentage of deepest sulci within this label
+            threshold = np.percentile(label_sulc, 100 - percentage)
+            
+            # Create a mask for vertices in this label that meet the threshold
+            label_mask = label_sulc >= threshold
+            
+            # Map back to global vertex indices
+            deepest_indices = label_indices[label_mask]
+            
+            # Create a global mask (all False initially)
+            global_mask = np.zeros(len(sulc), dtype=bool)
+            global_mask[deepest_indices] = True
+            
+            mask = global_mask
+        else:
+            # Working with the entire brain
+            # Calculate the threshold value for the top percentage of deepest sulci
+            threshold = np.percentile(sulc, 100 - percentage)
+            
+            # Create the mask
+            mask = sulc >= threshold
+            
+            deepest_indices = np.where(mask)[0]
+        
+        # Optionally create a label
+        if load_label:
+            if result_label_name is None:
+                if label_name is not None:
+                    result_label_name = f'{label_name}_deepest_{percentage}'
+                else:
+                    result_label_name = f'deepest_sulci_{percentage}'
+            
+            # Get RAS coordinates for the deepest sulci
+            deepest_ras = self.ras_coords[deepest_indices]
+            
+            # Create a label with the deepest sulci
+            self.load_label(
+                label_name=result_label_name, 
+                label_idxs=deepest_indices, 
+                label_RAS=deepest_ras, 
+                label_stat=sulc[deepest_indices]
+            )
+        
+        if return_mask:
+            return mask
+        else:
+            # Return the indices of vertices that meet the threshold
+            return deepest_indices
     ######
     # Sulcal Measurements
     ######
