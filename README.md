@@ -2,7 +2,7 @@
 
 # CNL_scalpel
 
-Scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
+Scalpel is a python library for analysis, segmentation, and plotting freesurfer cortical surface reconstructions
 
 inlcuded in the repo are
 
