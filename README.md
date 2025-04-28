@@ -2,7 +2,7 @@
 
 # CNL_scalpel
 
-Scalpel is a tool for easy interaction with freesurfer cortical surface reconstructions in python
+Scalpel is a python library for analysis, segmentation, and plotting freesurfer cortical surface reconstructions
 
 inlcuded in the repo are
 
@@ -14,9 +14,10 @@ inlcuded in the repo are
 
 ## Requirements
 
-- cd to cloned github repo & create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
+- cd to cloned github repo
+- create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
 - `conda activate CNL_scalpel`
--  from the repo home directory
+-  from the repo home directory `pip install -e .`
 - FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
 - FREESURFER_HOME is defined and has been added to your path
 
@@ -35,7 +36,7 @@ The ScalpelSubject class provides a comprehensive set of tools for analyzing bra
 Let's start by creating a ScalpelSubject instance:
 
 ```python
-from src.classes.subject import ScalpelSubject
+from scalpel.subject import ScalpelSubject
 
 # Initialize a subject
 subject = ScalpelSubject(
