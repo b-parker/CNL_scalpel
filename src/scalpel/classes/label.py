@@ -132,7 +132,7 @@ class Label(object):
 
         return np.array(sulcus_index), np.array(sulcus_RAS)
     
-    def write_label(self, label_name, label_dir_path, custom_label_name=None):
+    def write_label(self, label_name, label_dir_path=None, overwrite=False):
         """
         Writes label to file.
 
@@ -140,17 +140,19 @@ class Label(object):
         - custom_label_path (str): Path to save the label.
 
         """
-        if custom_label_name is None:
-            custom_label_name = label_name
+        if label_dir_path is None:
+            label_dir_path = self._subjects_dir / self._subject_id / 'label' 
             
         sfu.write_label(
             label_name = label_name, 
             label_indexes = self._vertex_indexes, 
             label_RAS = self._ras_coords, 
             hemi = self.subject.hemi,
-            subject_dir = self.subject.subjects_dir,
+            subjects_dir = self.subject.subjects_dir,
+            subject_id= self.subject.subject_id,
             surface_type= self.subject.surface_type,
             custom_label_dir = label_dir_path, 
+            overwrite=overwrite
             )
     
     

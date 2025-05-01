@@ -178,21 +178,30 @@ class ScalpelSubject(object):
         """
         self._labels.pop(label_name)
 
-    def write_label(self, label_name, custom_label_path = None):
+    def write_label(self, label_name: str, save_label_name: str = None, custom_label_dir: str = None, overwrite = False):
         """
         Write a label to a file.
 
         Parameters:
         - label_name (str): Name of the label.
+        - save_label_name (str): Name of the label to save.
         - custom_label_path (str): Path to save the label.
 
         Returns:
         - None
+
         """
 
-        if custom_label_path is not None:
-            self._labels[label_name].write_label(label_name = label_name, custom_label_path = custom_label_path)
-        self._labels[label_name].write_label(label_name = label_name, label_dir_path = self.subject_fs_path / "label")
+
+        if custom_label_dir is not None:
+            label_dir_path = Path(custom_label_dir)
+        else:
+            label_dir_path = self.subject_fs_path / "label"
+        
+        if save_label_name is None:
+            save_label_name = f"{self.hemi}.{label_name}.label"
+
+        self._labels[label_name].write_label(label_name = save_label_name, label_dir_path = label_dir_path, overwrite = overwrite)
 
     ############################
     # Visualization Methods
@@ -223,7 +232,7 @@ class ScalpelSubject(object):
         subject = ScalpelSubject(name, hemi, surface_type)
         return subject
     
-    def save_plot(self, filename: str):
+    def save_plot(self, filename: str, save_dir = None):
         """
         Save the trimesh Scene to file
 
@@ -231,7 +240,17 @@ class ScalpelSubject(object):
         if self._scene is None:
             raise ValueError("Scene not initialized. Please call plot() first.")
 
-        self._scene.save_image(filename, width=800, height=600, visible=True)     
+        import io
+        from PIL import Image
+
+        if save_dir is not None:
+            filename = Path(save_dir) / filename
+
+        data = self._scene.save_image(resolution=(1080,1080))
+        image = Image.open(io.BytesIO(data))
+        image.save(filename)
+        #
+          
     
     ############################
     # Gyral Analysis Methods

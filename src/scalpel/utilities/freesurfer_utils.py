@@ -1248,7 +1248,7 @@ def read_label(label_name: Union[str, Path], include_stat: bool = False) -> tupl
     
     return vertices, RAS_coords
 
-def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RAS: np.array, hemi: str, subject_dir: Union[str, Path], surface_type: str, overwrite: bool = False, **kwargs):
+def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RAS: np.array, hemi: str, subject_id:str, subjects_dir: Union[str, Path], surface_type: str, overwrite: bool = False, **kwargs):
     """
     Write freesurfer label file from label indexes and RAS coordinates
 
@@ -1265,8 +1265,8 @@ def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RA
     
     """
     
-    if isinstance(subject_dir, str):
-        subject_dir = Path(subject_dir)
+    if isinstance(subjects_dir, str):
+        subjects_dir = Path(subjects_dir)
     
     ## Check for custom label directory
     if 'custom_label_dir' in kwargs:
@@ -1275,7 +1275,7 @@ def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RA
         else:
             label_dir = kwargs['custom_label_dir']
     else:
-        label_dir = subject_dir / 'label'
+        label_dir = subjects_dir / subject_id / 'label'
 
     ## Check for custom label name
     if 'custom_label_name' in kwargs:
@@ -1285,11 +1285,11 @@ def write_label( label_name: Union[str, Path], label_indexes: np.array, label_RA
     
     ## Create full filename
     label_filename = label_dir / label_name
+
     
     if not overwrite:
-        assert not label_filename.exists(), f"{hemi}.{label_name} already exists for subject at {subject_dir.absolute()}"
+        assert not label_filename.exists(), f"{hemi}.{label_name} already exists for subject at {label_dir.absolute()}"
 
-    subject_id = subject_dir.name
     label_length = label_indexes.shape[0]
 
     print(f'Writing label {label_filename.name} for {subject_id}')
