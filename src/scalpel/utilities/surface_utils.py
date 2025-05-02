@@ -16,20 +16,15 @@ from sklearn.cluster import AgglomerativeClustering
 
 # Brain
 import nibabel as nb
-from nibabel.freesurfer.io import read_annot, read_label, read_morph_data, read_geometry
-#import pygeodesic.geodesic as geodesic - Only used in dist_calc_matrix
 
 # Plotting1=--0
 import matplotlib.pyplot as plt
-
-from scalpel.utilities.utility_funcs import mris_convert_command
 
 # Meshes
 import trimesh as tm
 import networkx as nx
 #import meshplot 
 from scalpel.utilities.freesurfer_utils import *
-from scalpel.utilities import geometry_utils
 
 
 
@@ -198,115 +193,6 @@ def getDistMatrix(subjects_dir=str, labels=list, sub=str, hemi=str, savedir=str,
     savetxt('%s/adj-labels-%s.txt'%(savedir,hemi),dist_matrix)
 
 
-    
-
-
-
-############################################################################################################
-############################################################################################################
-############################################################################################################
-
-
-#                   Subject Class and Boundary functions
-
-
-############################################################################################################
-############################################################################################################
-############################################################################################################
-
-
-# Use boundary sulci to capture all vertices in surface between boundaries, and plot
-
-import functools
-from scalpel.utilities.utility_funcs import memoize
-
-class ScalpelSurface:
-    """
-    Surface class for performing scalpel operations
-
-    REQUIREMENTS:
-        - Freesurfer recon-all on subject
-        - subject_filepath to subject freesurfer directory
-
-    INPUT:
-        - subject_filepath to subject freesurfer directory
-
-    METHODS:
-        cortex: list; [lh, rh], each is the result of nibabel.freesurfer.io.read_label on ?h.cortex.label i.e. [vertex_num, [R, A, S] for all vertices in hemisphere]
-        make_roi_cut:  input - hemisphere, anterior, posterion, inferior, superior label names
-                       output - freesurfer .label file including all vertices within bounded ROI
-
-        get_boundary:  input - hemisphere=str, anterior=str, posterior=str, inferior=str, superior=str 
-                       output - dict of boundary vertex numbers and vertex coordinates
-
-        plot_boundary: input - label_name=str, label_filepath=str, outlier_corrected=bool, boundary_type=str, decimal_size=int 
-                       output - 3D plots boundary vertices alongside vertices for whole label
-
-    """
-    def  __init__(self, subject_filepath= str):
-        self._subject_filepath = Path(subject_filepath)
-        
-
-    @property
-    @memoize
-    def subject_filepath(self):
-        return self._subject_filepath
-
-    @subject_filepath.setter    
-    def subject_filepath(self, value):
-        print(f'"{self.subject_filepath}" is now "{value}"')
-        self.subject_filepath = value
-
-    @property
-    @memoize
-    def cortex(self):
-        """
-        Whole brain as a list with two elements, [lh, rh]
-        each hemi is an array with two elements, [vertex_index, RAS_coords]
-        """
-        cortex = [read_label(self._subject_filepath / 'label/lh.cortex.label'), # lh.cortex.label
-                  read_label(self._subject_filepath / 'label/rh.cortex.label')] # rh.cortex.label
-        
-        return cortex
-    
-    @cortex.setter
-    def cortex(self, value):
-        __subject_filepath = Path(value)
-        cortex = [read_label(self._subject_filepath / 'label/lh.cortex.label'), # lh.cortex.label
-                  read_label(self._subject_filepath / 'label/rh.cortex.label')] # rh.cortex.label
-        return cortex
-    
-    def get_surface(self, surface_type, hemi):
-        """Reads morph data on hemi.surface_type"""
-        return read_morph_data(self.subject_filepath / f'surf/{hemi}.{surface_type}')
-        
-        
-
-    def plot_boundary(self, label_name='label', label_filepath='', outlier_corrected_bool=True, boundary_type='anterior', decimal_size=1):
-        # Plot boundary versus original label
-        vertices, coords = read_label(label_filepath)
-        
-        r_data = np.array([ras[0] for ras in coords])
-        a_data = np.array([ras[1] for ras in coords])
-        s_data = np.array([ras[2] for ras in coords])
-
-        boundary_vert_num, boundary_verts = find_boundary_vertices(boundary=boundary_type, label_name=[vertices, coords], outlier_corrected=outlier_corrected_bool, decimal_size=decimal_size)
-
-        boundary_r_data = np.array([ras[0] for ras in boundary_verts])
-        boundary_a_data = np.array([ras[1] for ras in boundary_verts])
-        boundary_s_data = np.array([ras[2] for ras in boundary_verts])
-
-        fig = plt.figure(figsize=(8,8))
-        ax1 = fig.add_subplot(221, projection='3d')
-        ax2 = fig.add_subplot(222, projection='3d')
-        ax1.scatter3D(r_data, a_data, s_data, cmap='viridis', c=s_data)
-
-        # Getting lower bound of the sulcus
-
-        ax2.scatter3D(boundary_r_data, boundary_a_data, boundary_s_data, cmap='viridis', c=boundary_s_data, vmin=10, vmax=45)
-        ax2.set(zlim3d=[10,45]);
-        plt.suptitle(f'all vertices of {label_name} vs {boundary_type} boundary')
-        plt.show;
 
 
 
@@ -397,6 +283,7 @@ def find_label_boundary(label_faces):
     boundary_edges = [edge for edge, count in edges.items() if count == 1]
 
     return np.unique(boundary_edges)
+
 
 def find_endpoint_vertices(path: list, graph: nx.Graph):
     """
@@ -581,7 +468,7 @@ def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
         dj_set.merge(triangular_face[0], triangular_face[1])
         dj_set.merge(triangular_face[0], triangular_face[2])
 
-    dj_set = [geometry_utils.get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
+    dj_set = [get_faces_from_vertices(all_faces, subset) for subset in dj_set.subsets()]
     return dj_set
 
 
@@ -629,186 +516,6 @@ def find_shortest_path_in_mesh(faces, source_index, target_index):
 
     return path
 
-
-def make_roi_cut(anterior: str, posterior: str, superior: str, inferior: str, hemi: str, all_points: np.array, all_faces: np.array, subjects_dir: str or Path, sub: str):
-    """ 
-    Create an outlined region of cortex, using each of the labels as the boundary in a given direction. Take 4 labels names, hemisphere, and mesh, and create a single label that is the bounded roi.
-
-    INPUT: 
-    anterior: str - name of anterior label
-    posterior: str - name of posterior label
-    superior: str - name of superior label
-    inferior: str - name of inferior label
-    hemi: str - hemisphere of interest
-    all_points: np.array - array of all points in a hemisphere as loaded by nibabel freesurfer.io.read_geometry
-    all_faces: np.array - array of all faces in a hemisphere as loaded by nibabel freesurfer.io.read_geometry
-    subjects_dir: str or Path - path to freesurfer subjects directory
-    sub: str - subject id
-
-    OUTPUT:
-    roi_label_ind: np.array - array of indices of vertices in the bounded roi
-    roi_label_points: np.array - array of points in the bounded roi
-
-    TODO
-    - fractionated sulci
-    - angle of direction
-    - different path length algorithms
-    - maybe using only boundary vertices to create a larger ROI for a given portion of the brain
-    - splitting a region 
-
-    
-    """
-
-
-    labels = {'anterior': [anterior], 'posterior': [posterior], 'superior': [superior], 'inferior': [inferior]}
-
-    inflated_surface = nb.freesurfer.io.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
-
-    for i in labels.keys():
-        raw_label = read_label(f'{subjects_dir}/{sub}/label/{hemi}.{labels[i][0]}.label')
-        
-        inflated_RAS = np.array(inflated_surface[0][raw_label[0]])
-
-        labels[i].append((raw_label[0], inflated_RAS))
-
-    edge_points = {}
-
-    ## Get edge points for each boundary label
-    for boundary in labels.keys():
-        if boundary == 'anterior' or boundary == 'posterior':
-            edges = ['superior', 'inferior']
-            label_ind = labels[boundary][1][0]
-            label_RAS = labels[boundary][1][1]
-            label_name = labels[boundary][0]
-            edge_points[f'{boundary}_{label_name}_label_{edges[0]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[0])
-            edge_points[f'{boundary}_{label_name}_label_{edges[1]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[1])
-
-        else:
-            edges = ['anterior', 'posterior']
-            label_ind = labels[boundary][1][0]
-            label_RAS = labels[boundary][1][1]
-            label_name = labels[boundary][0]
-            edge_points[f'{boundary}_{label_name}_label_{edges[0]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[0])
-            edge_points[f'{boundary}_{label_name}_label_{edges[1]}_edge'] = find_edge_vert(label_RAS, label_ind, edges[1])
-
-    ## Get the shortest path between the paired points on the boundary
-    boundary_paths = {}
-
-    for ant_post in ["anterior", "posterior"]:
-        for sup_inf in ["superior", "inferior"]:
-            starting_vertex = edge_points[f"{ant_post}_{labels[ant_post][0]}_label_{sup_inf}_edge"][0][0]
-            target_vertex = edge_points[f"{sup_inf}_{labels[sup_inf][0]}_label_{ant_post}_edge"][0][0]
-
-            path = find_shortest_path_in_mesh(all_points, all_faces, starting_vertex, target_vertex)
-            boundary_faces = geometry_utils.get_faces_from_vertices(all_faces, path)
-            boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = path
-            #boundary_paths[f"{ant_post}_{sup_inf}_{labels[ant_post][0]}_to_{sup_inf}_{ant_post}_{labels[sup_inf][0]}"] = boundary_faces
-
-    ## Combine all labels and paths into a single label
-    
-    roi_label_ind = np.unique(np.concatenate([labels[i][1][0] for i in labels.keys()]))
-    print(len(roi_label_ind))
-    for i in boundary_paths.keys():
-        print(boundary_paths[i])
-        roi_label_ind = np.unique(np.concatenate([roi_label_ind, boundary_paths[i]], axis=None))
-        print(len(roi_label_ind))
-    roi_label_points = all_points[roi_label_ind]
-    return [roi_label_ind, roi_label_points]
-
-from scalpel.utilities.surface_utils import get_label_subsets
-
-def sort_sets_by_position(label_sets, points, direction):
-    """
-    Sort a list of faces by their average RAS position, according to direction. If direction is "anterior", 
-    sort by the second element of the RAS point, if "superior", sort by the third element of the RAS point
-
-    INPUT:
-    label_sets: list - list of faces in label
-    points: np.array - array of points in mesh
-    direction: str - direction to sort by
-
-    OUTPUT:
-    sorted_sets: list - list of sorted faces
-   """
-    if direction == 'anterior':
-        dir_idx = 1
-    elif direction == 'superior':
-        dir_idx = 2
-    else:
-        raise ValueError('direction must be anterior or superior')
-    sorted_sets = sorted(label_sets, key=lambda x: np.median(points[x][:,dir_idx]))
-    return sorted_sets
-
-def make_2cut_RAS(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, direction: str, hemi: str, points, faces, subjects_dir, sub):
-    """  
-    Create ROI between two sulci by connecting edges of the sulci according to a direction - anterior-posterior or superior-inferior
-
-    INPUT:
-    label_1: str - name of first label
-    label_2: str - name of second label
-    direction: str - direction to connect edges "anterior-posterior" or "superior-inferior"
-    hemi: str - hemisphere
-    points: np.array - array of points in mesh
-    faces: np.array - array of faces in mesh
-    subjects_dir: str - path to subjects directory
-    sub: str - subject ID
-
-    OUTPUT:
-    roi_faces: np.array - array of faces in ROI
-    roi_points: np.array - array of points in ROI
-    """
-
-    result = []
-
-    for i in range(2):
-        if i == 0:
-            label_1_RAS = label_1_RAS
-            label_1_ind = label_1_ind
-            label_2_RAS = label_2_RAS
-            label_2_ind = label_2_ind
-        else:
-            label_1_RAS = label_2_RAS
-            label_1_ind = label_2_ind
-            label_2_RAS = label_1_RAS
-
-
-    inflated_surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{sub}/surf/{hemi}.inflated')
-    label_1_faces = geometry_utils.get_faces_from_vertices(faces, label_1_ind)
-    label_2_faces = geometry_utils.get_faces_from_vertices(faces, label_2_ind)
-
-    ### get disjoint sets for each label
-    label_1_subsets = get_label_subsets(label_1_faces)
-    label_2_subsets = get_label_subsets(label_2_faces)
-
-    ## sort subsets by their anterior posterior value from RAS
-    ## return most posterior subset of label 1 and most anterior subset of label 
-    label_1_subsets = sort_sets_by_position(label_1_subsets, points, direction)[-1]
-    label_2_subsets = sort_sets_by_position(label_2_subsets, points, direction)[0]
-
-
-    if direction == 'anterior-posterior':
-        label_1_medial = find_edge_vert(label_1_RAS, label_1_ind, 'medial', hemi)[0][0]
-        label_2_medial = find_edge_vert(label_2_RAS, label_2_ind, 'medial', hemi)[0][0]
-        label_1_lateral = find_edge_vert(label_1_RAS, label_1_ind, 'lateral', hemi)[0][0]
-        label_2_lateral = find_edge_vert(label_2_RAS, label_2_ind, 'lateral', hemi)[0][0]
-
-    elif direction == 'superior-inferior':
-        label_1_anterior = find_edge_vert(label_1_RAS, label_1_ind, 'anterior', hemi)[0][0]
-        label_2_anterior = find_edge_vert(label_2_RAS, label_2_ind, 'anterior', hemi)[0][0]
-        label_1_posterior = find_edge_vert(label_1_RAS, label_1_ind, 'posterior', hemi)[0][0]
-        label_2_posterior = find_edge_vert(label_2_RAS, label_2_ind, 'posterior', hemi)[0][0]
-    
-    else:
-        raise ValueError('direction must be anterior-posterior or superior-inferior')
-
-    path1 = find_shortest_path_in_mesh(points, faces, label_1_medial, label_2_medial)
-    path2 = find_shortest_path_in_mesh(points, faces, label_1_lateral, label_2_lateral)
-
-    roi_paths = np.unique(np.concatenate((path1, path2)))
-    roi_ind = np.concatenate((label_1_ind, label_2_ind, roi_paths))
-    roi_RAS = np.concatenate((label_1_RAS, label_2_RAS, points[roi_paths]))
-
-    return roi_ind, roi_RAS
 
 def find_closest_vertices(boundary1: np.array, boundary2: np.array, points, faces, num_vertices: float = .1, path_length: bool = True):
     """
@@ -1067,37 +774,6 @@ def find_adjacent_indices(label_ind, faces):
     return adj_ind
 
 
-
-def ROI_cut(self, gyrus=True, clustering = 'kmeans', num_clusters = 500):
-    if isinstancel(label1, list):
-        label1_vertex_indexes, label1_ras_coords = [], []
-        for label in label1:
-            if self.subject.labels[label]:
-                label1_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
-                label1_ras_coords.append(self.subject.labels[label].ras_coords)
-            else:
-                self.subject.load_label(label, hemi)
-                label1_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
-                label1_ras_coords.append(self.subject.labels[label].ras_coords)
-    
-    if isinstancel(label2, list):
-        label2_vertex_indexes, label2_ras_coords = [], []
-        for label in label2:
-            if self.subject.labels[label]:
-                label2_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
-                label2_ras_coords.append(self.subject.labels[label].ras_coords)
-            else:
-                self.subject.load_label(label, hemi)
-                label2_vertex_indexes.append(self.subject.labels[label].vertex_indexes)
-                label2_ras_coords.append(self.subject.labels[label].ras_coords)
-
-    if gyrus:
-        inflated_ind, inflated_ras_coords = get_gyrus(self.subject.vertex_indexes, self.subject.ras_coords, self.subject.curv)
-
-    if clustering == 'kmeans':
-        surface_clusters = cluster_label_kmeans(inflated_ind, inflated_ras_coords, self.subject.vertex_indexes, self.subject.faces, n_clusters=num_clusters)
-    
-
 ### combine labels
 
 def combine_labels(subject: "ScalpelSubject", labels: List[str], save_to_subject: bool = False):
@@ -1124,7 +800,7 @@ def pca_label(subject: "ScalpelSubject", labels: List[str], n_components: int = 
     ## PCA on these labels
     # Step 1: Standardize the data
     scaler = StandardScaler()
-    label_12_faces = geometry_utils.get_faces_from_vertices(subject.faces, subject.labels[combined_label][0])
+    label_12_faces = get_faces_from_vertices(subject.faces, subject.labels[combined_label][0])
     label_12_boundary = find_label_boundary(label_12_faces)
     label_12_boundary_RAS = subject.ras_coords[label_12_boundary]
     points_scaled = scaler.fit_transform(label_12_boundary_RAS)
@@ -1141,21 +817,6 @@ def pca_label(subject: "ScalpelSubject", labels: List[str], n_components: int = 
     Ag_clust_2 = AgglomerativeClustering(n_clusters=3).fit_predict(label2_points)
     clusters2_adjusted = Ag_clust_2 + 5
     Ag_clust_3 = AgglomerativeClustering(n_clusters=5).fit_predict(points_for_clustering)
-
-
-
-
-### Cluster
-
-### Get unique clusters
-
-### Find closest clusters
-
-### Find gyral neighbors of closest clusters
-
-### Cluster gyrus
-
-### Intersect gyral neighbors and cluster gyrus
 
 
     
@@ -1265,6 +926,50 @@ def find_closest_vertex(centroid, vertices):
     distances = np.linalg.norm(vertices - centroid, axis=1)
     closest_idx = np.argmin(distances)
     return closest_idx, distances[closest_idx]
+
+def make_mesh(inflated_points: np.array, faces: np.array, label_ind: np.array, **kwargs) -> tm.Trimesh:
+    """ 
+    Given a set of indices, construct a mesh of the vertices in the indices along a surface
+
+    INPUT: 
+    faces: np.array - array of faces in mesh
+    label_ind: np.array - array of indices of label
+
+    OUTPUT:
+    label_mesh: tm.Trimesh - mesh of label
+    """
+    if 'include_all' in kwargs:
+        include_all = kwargs['include_all']
+    else:
+        include_all = False
+
+    label_faces = get_faces_from_vertices(faces, label_ind, include_all=include_all)
+    label_mesh = tm.Trimesh(vertices=inflated_points, faces=label_faces, process=False, face_colors=kwargs['face_colors'])
+    return label_mesh
+
+def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all : bool = False):
+    """
+    Takes a list of faces and label indices
+    Returns the faces that contain the indices
+
+    INPUT:
+    faces: array of faces composed of 3 points
+    label_ind: array of indices of points in the label (first colum of label file; 0 index in read_label)
+    include_all: bool - if True, return faces that contain any of the points in the label
+
+    OUTPUT:
+    label_faces: array of faces that contain the points in the label
+    """
+    all_label_faces = []
+    if include_all == False:
+        for face in faces:
+            if all([point in label_ind for point in face]):
+                all_label_faces.append(face)
+    else:
+        for face in faces:
+            if any([point in label_ind for point in face]):
+                all_label_faces.append(face)
+    return np.array(all_label_faces)
 
 
         

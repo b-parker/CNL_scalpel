@@ -2,7 +2,7 @@
 from typing import List
 import numpy as np
 import trimesh as tm
-from scalpel.utilities import geometry_utils
+from scalpel.utilities import surface_utils
 NoneType = type(None)
 
 # Define a dictionary of default colors
@@ -58,7 +58,7 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
     if label_ind is None and label_name in labels:
         label_ind = labels[label_name].vertex_indexes
         face_colors = np.array(face_colors).astype(int)
-        label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors, include_all = False)
+        label_mesh = surface_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors, include_all = False)
     
     scene.add_geometry(label_mesh, geom_name=label_name)
     

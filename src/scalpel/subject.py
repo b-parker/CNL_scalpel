@@ -15,7 +15,6 @@ import trimesh as tm
 from scalpel.classes.label import Label
 from scalpel.utilities import freesurfer_utils as fsu
 from scalpel.utilities import surface_utils
-from scalpel.utilities import geometry_utils
 from scalpel.utilities.plotting import initialize_scene, plot, plot_label, remove_label, show_scene
 
 class ScalpelSubject(object):
@@ -105,12 +104,12 @@ class ScalpelSubject(object):
         sulcus_gray = [130, 130, 130]
         if self.surface_type == 'inflated':
             print('Initial plot builds cortical mesh (~1 minute)')
-            gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
-            sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray, include_all = True)
+            gyrus_mesh = surface_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
+            sulcus_mesh = surface_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray, include_all = True)
             self._mesh['gyrus'] = gyrus_mesh
             self._mesh['sulcus'] = sulcus_mesh
         else:
-            self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray, include_all=True)
+            self._mesh['cortex'] = surface_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray, include_all=True)
         return self._mesh
 
     @property
@@ -304,7 +303,7 @@ class ScalpelSubject(object):
         if label_name not in self.labels:
             raise ValueError(f"Label '{label_name}' does not exist.")
 
-        label_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label_name].vertex_indexes)
+        label_faces = surface_utils.get_faces_from_vertices(self.faces, self.labels[label_name].vertex_indexes)
         label_boundary = surface_utils.find_label_boundary(label_faces)
         boundary_ras = self.ras_coords[label_boundary]
 
@@ -423,8 +422,8 @@ class ScalpelSubject(object):
         if label1 not in self.labels or label2 not in self.labels:
             raise ValueError("Both labels must exist in the subject.")
 
-        label1_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label1].vertex_indexes, include_all = False)
-        label2_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label2].vertex_indexes, include_all = False)
+        label1_faces = surface_utils.get_faces_from_vertices(self.faces, self.labels[label1].vertex_indexes, include_all = False)
+        label2_faces = surface_utils.get_faces_from_vertices(self.faces, self.labels[label2].vertex_indexes, include_all = False)
 
         label1_neighbors = np.unique(label1_faces)
         label2_neighbors = np.unique(label2_faces)
@@ -492,7 +491,7 @@ class ScalpelSubject(object):
 
         # If disjoints, find largest disjointed shared gyral region
         if disjoints:
-            shared_gyral_faces = geometry_utils.get_faces_from_vertices(self.faces, shared_index)
+            shared_gyral_faces = surface_utils.get_faces_from_vertices(self.faces, shared_index)
             disjoints = surface_utils.get_label_subsets(shared_gyral_faces, self.faces)
 
             disjoints.sort(key=lambda x: len(x), reverse=True)
@@ -611,7 +610,7 @@ class ScalpelSubject(object):
             sulcal_cluster_vertices = results['sulcal_clusters'][sulcal_id]['vertices']
             
             
-            sulcal_faces = geometry_utils.get_faces_from_vertices(self.faces, sulcal_cluster_vertices)
+            sulcal_faces = surface_utils.get_faces_from_vertices(self.faces, sulcal_cluster_vertices)
             sulcal_boundary = surface_utils.find_label_boundary(sulcal_faces)
             
             
@@ -698,7 +697,7 @@ class ScalpelSubject(object):
         """
         # Identify vertices
         if custom_vertexes is not None:
-            label_faces = geometry_utils.get_faces_from_vertices(self.faces, custom_vertexes)
+            label_faces = surface_utils.get_faces_from_vertices(self.faces, custom_vertexes)
             label_faces_ind = np.where(np.isin(self.faces, custom_vertexes))[0] 
             label_faces = self.faces[label_faces_ind]
         else: 
