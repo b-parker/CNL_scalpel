@@ -28,9 +28,9 @@ class ScalpelSubject(object):
         self._scene = None
         self._mesh = {}
     
-        surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{subject_id}/surf/{hemi}.{surface_type}')
+        self._surface = nb.freesurfer.read_geometry(f'{subjects_dir}/{subject_id}/surf/{hemi}.{surface_type}')
         self._curv = nb.freesurfer.read_morph_data(f'{subjects_dir}/{self._subject_id}/surf/{self._hemi}.curv')
-        self._ras_coords, self._faces = surface[0], surface[1]
+        self._ras_coords, self._faces = self._surface[0], self._surface[1]
         self._gyrus = fsu.get_gyrus(np.unique(self._faces), self._ras_coords, self._curv)
         self._sulcus = fsu.get_sulcus(np.unique(self._faces), self._ras_coords, self._curv)
 
@@ -56,6 +56,10 @@ class ScalpelSubject(object):
     def surface_type(self):
         ## Surface Type - inflated, pial, white
         return self._surface_type
+    
+    def surface(self):
+        ## Surface Type - inflated, pial, white
+        return self._surfacee
 
     @property
     def ras_coords(self):
@@ -88,7 +92,7 @@ class ScalpelSubject(object):
     
     @cached_property
     def sulc_vals(self):
-        ## Returns vertex-wise sulc values
+        ## Returns vertex-wise sulc values from FreeSurfer .sulc
         sulc_path = f'{self.subject_fs_path}/surf/{self.hemi}.sulc'
         sulc_vals= nb.freesurfer.read_morph_data(sulc_path)
         return sulc_vals
@@ -109,6 +113,7 @@ class ScalpelSubject(object):
             self._mesh['gyrus'] = gyrus_mesh
             self._mesh['sulcus'] = sulcus_mesh
         else:
+            print('Initial plot builds cortical mesh (~1 minute)')
             self._mesh['cortex'] = surface_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray, include_all=True)
         return self._mesh
 
@@ -176,6 +181,26 @@ class ScalpelSubject(object):
         - None
         """
         self._labels.pop(label_name)
+
+    
+    def combine_labels(self, label_names: List[str], new_label_name: str) -> None:
+        """
+        Combine multiple labels into a single new label.
+
+        Parameters:
+            label_names (List[str]): List of label names to combine.
+            new_label_name (str): Name for the new combined label.
+
+        Raises:
+            ValueError: If any of the input labels don't exist.
+        """
+        if not all(name in self.labels for name in label_names):
+            raise ValueError("All input labels must exist in the subject.")
+
+        combined_ind = np.unique(np.concatenate([self.labels[name].vertex_indexes for name in label_names])).astype(int)
+        combined_ras = self.ras_coords[combined_ind]
+        self.load_label(new_label_name, combined_ind, combined_ras)
+
 
     def write_label(self, label_name: str, save_label_name: str = None, custom_label_dir: str = None, overwrite = False):
         """
@@ -262,24 +287,6 @@ class ScalpelSubject(object):
     ############################
     # Gyral Analysis Methods
     ############################
-
-    def combine_labels(self, label_names: List[str], new_label_name: str) -> None:
-        """
-        Combine multiple labels into a single new label.
-
-        Parameters:
-            label_names (List[str]): List of label names to combine.
-            new_label_name (str): Name for the new combined label.
-
-        Raises:
-            ValueError: If any of the input labels don't exist.
-        """
-        if not all(name in self.labels for name in label_names):
-            raise ValueError("All input labels must exist in the subject.")
-
-        combined_ind = np.unique(np.concatenate([self.labels[name].vertex_indexes for name in label_names])).astype(int)
-        combined_ras = self.ras_coords[combined_ind]
-        self.load_label(new_label_name, combined_ind, combined_ras)
 
     def perform_boundary_analysis(self, label_name: str, method: str = 'pca', 
                                   n_components: int = 2, n_clusters: Union[int, List[int]] = [2, 3],
@@ -507,6 +514,7 @@ class ScalpelSubject(object):
             'shared_gyral_index': shared_index,
             'shared_gyral_ras': shared_ras
         }
+    
     def analyze_sulcal_gyral_relationships(self, label_name, gyral_clusters=300, sulcal_clusters=None, 
                                       algorithm='kmeans', load_results=True):
         """
@@ -842,6 +850,7 @@ class ScalpelSubject(object):
         else:
             # Return the indices of vertices that meet the threshold
             return deepest_indices
+    
     ######
     # Sulcal Measurements
     ######

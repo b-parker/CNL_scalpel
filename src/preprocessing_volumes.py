@@ -1,5 +1,5 @@
 
-import src.freesurfer_utils as src
+import scalpel.utilities.freesurfer_utils as src
 import json
 from pathlib import Path
 import numpy as np

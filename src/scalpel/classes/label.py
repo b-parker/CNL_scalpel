@@ -72,6 +72,9 @@ class Label(object):
     
     @property
     def faces(self) -> np.array:
+        if not hasattr(self, '_subject'):
+            self._subject = self.subject
+            
         label_faces = []
         for face in self._subject.faces:
             for vertex_index in face:
