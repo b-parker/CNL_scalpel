@@ -12,7 +12,12 @@ def make_mesh(inflated_points: np.array, faces: np.array, label_ind: np.array, *
     OUTPUT:
     label_mesh: tm.Trimesh - mesh of label
     """
-    label_faces = get_faces_from_vertices(faces, label_ind, include_all=True)
+    if 'include_all' in kwargs:
+        include_all = kwargs['include_all']
+    else:
+        include_all = False
+
+    label_faces = get_faces_from_vertices(faces, label_ind, include_all=include_all)
     label_mesh = tm.Trimesh(vertices=inflated_points, faces=label_faces, process=False, face_colors=kwargs['face_colors'])
     return label_mesh
 

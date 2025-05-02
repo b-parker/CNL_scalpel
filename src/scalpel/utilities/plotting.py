@@ -58,7 +58,7 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
     if label_ind is None and label_name in labels:
         label_ind = labels[label_name].vertex_indexes
         face_colors = np.array(face_colors).astype(int)
-        label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors)
+        label_mesh = geometry_utils.make_mesh(ras_coords, faces, label_ind, face_colors=face_colors, include_all = False)
     
     scene.add_geometry(label_mesh, geom_name=label_name)
     
@@ -66,14 +66,14 @@ def plot_label(scene, ras_coords, faces, labels, label_name: str, view: str, hem
     
     return scene.show()
 
-def plot(scene, hemi, view='lateral', labels: List[str] = None, plot_label_func=None):
+def plot(scene, hemi, view='lateral', labels: List[str] = None):
     # Reset the scene to the requested view
     apply_rotation(scene, view, hemi, reset=True)
     
     # Plot the surface
     if labels:
         for label in labels:
-            plot_label_func(label, view=view)
+            plot_label(label, view=view)
     
     return scene.show()
 

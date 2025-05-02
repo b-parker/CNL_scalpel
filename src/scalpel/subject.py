@@ -106,11 +106,11 @@ class ScalpelSubject(object):
         if self.surface_type == 'inflated':
             print('Initial plot builds cortical mesh (~1 minute)')
             gyrus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._gyrus[0], face_colors=gyrus_gray)
-            sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray)
+            sulcus_mesh = geometry_utils.make_mesh(self._ras_coords, self._faces, self._sulcus[0], face_colors=sulcus_gray, include_all = True)
             self._mesh['gyrus'] = gyrus_mesh
             self._mesh['sulcus'] = sulcus_mesh
         else:
-            self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray)
+            self._mesh['cortex'] = geometry_utils.make_mesh(self._ras_coords, self._faces, self.vertex_indexes, face_colors=gyrus_gray, include_all=True)
         return self._mesh
 
     @property
@@ -212,7 +212,7 @@ class ScalpelSubject(object):
             self.mesh
         if self._scene is None:
             self._scene = initialize_scene(self._mesh, view, self._hemi, self._surface_type)
-        return plot(scene = self._scene, hemi = self.hemi, view = view, labels = labels, plot_label_func = self.plot_label)
+        return plot(scene = self._scene, hemi = self.hemi, view = view, labels = labels)
 
     def plot_label(self, label_name: str, view='lateral', label_ind=None, face_colors=None):
         assert label_name in self.labels, f"Label {label_name} not found in subject {self.subject_id}"
@@ -232,21 +232,29 @@ class ScalpelSubject(object):
         subject = ScalpelSubject(name, hemi, surface_type)
         return subject
     
-    def save_plot(self, filename: str, save_dir = None):
+    def save_plot(self, filename: str, save_dir = None, distance = 500, resolution = 'low'):
         """
         Save the trimesh Scene to file
-
         """
         if self._scene is None:
             raise ValueError("Scene not initialized. Please call plot() first.")
-
         import io
         from PIL import Image
 
+        if resolution == 'low':
+            resolution = (512, 512)
+        elif resolution == 'medium':
+            resolution = (720, 720)
+        elif resolution == 'high':
+            resolution = (1080, 1080)
+        
+        # Set a proper camera distance to capture the entire mesh
+        self._scene.set_camera(distance=distance)  
+        
         if save_dir is not None:
             filename = Path(save_dir) / filename
-
-        data = self._scene.save_image(resolution=(1080,1080))
+        
+        data = self._scene.save_image(resolution=resolution)
         image = Image.open(io.BytesIO(data))
         image.save(filename)
         #
@@ -415,8 +423,8 @@ class ScalpelSubject(object):
         if label1 not in self.labels or label2 not in self.labels:
             raise ValueError("Both labels must exist in the subject.")
 
-        label1_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label1].vertex_indexes)
-        label2_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label2].vertex_indexes)
+        label1_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label1].vertex_indexes, include_all = False)
+        label2_faces = geometry_utils.get_faces_from_vertices(self.faces, self.labels[label2].vertex_indexes, include_all = False)
 
         label1_neighbors = np.unique(label1_faces)
         label2_neighbors = np.unique(label2_faces)
@@ -446,7 +454,8 @@ class ScalpelSubject(object):
         return shared_gyral_index, shared_gyral_ras
 
     def find_gyral_gap(self, label1: str, label2: str, method: str = 'pca', n_components: int = 2, 
-                       n_clusters: Union[int, List[int]] = [2, 3], clustering_algorithm: str = 'agglomerative') -> dict:
+                       n_clusters: Union[int, List[int]] = [2, 3], clustering_algorithm: str = 'agglomerative',
+                       disjoints = True) -> dict:
         """
         Find the gyral gap between two labels.
 
@@ -457,6 +466,7 @@ class ScalpelSubject(object):
             n_components (int): Number of PCA components (ignored if method is 'direct').
             n_clusters (Union[int, List[int]]): Number of clusters for each part of the label.
             clustering_algorithm (str): Clustering algorithm to use for boundary analysis.
+            disjoints (bool): If True, find largest disjointed shared gyral region.
 
         Returns:
             dict: Complete analysis results including the gyral gap.
@@ -479,6 +489,15 @@ class ScalpelSubject(object):
 
         # Get shared gyral region
         shared_index, shared_ras = self.get_shared_gyral_region(shared_clusters)
+
+        # If disjoints, find largest disjointed shared gyral region
+        if disjoints:
+            shared_gyral_faces = geometry_utils.get_faces_from_vertices(self.faces, shared_index)
+            disjoints = surface_utils.get_label_subsets(shared_gyral_faces, self.faces)
+
+            disjoints.sort(key=lambda x: len(x), reverse=True)
+            shared_index = np.unique(disjoints[0])
+            shared_ras = self.ras_coords[shared_index]
 
         return {
             'label1_analysis': analysis1,
