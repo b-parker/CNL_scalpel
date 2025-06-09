@@ -2,275 +2,329 @@
 
 # CNL_scalpel
 
-Scalpel is a python library for analysis, segmentation, and plotting freesurfer cortical surface reconstructions
+Scalpel is a Python library for analysis, segmentation, and plotting FreeSurfer cortical surface reconstructions.
 
-inlcuded in the repo are
+## Features
 
-- simple object-oriented design for interacting with fs subjects
-- interactive plotting in jupyter
-- reading, editing, and writing fs label files
-- label centroids, thresholding, disjoint, boundary, depth, thickness all included
-- ability to call several frequently used freesurfer functions (label2label, label2annot, mris_anatomical_stats etc.)
+- Simple object-oriented design for interacting with FreeSurfer subjects
+- Interactive plotting in Jupyter notebooks
+- Reading, editing, and writing FreeSurfer label files
+- Label centroids, thresholding, boundary analysis, depth, and thickness measurements
+- Gyral-sulcal analysis and clustering
+- Surface area and cortical thickness calculations
+- Euclidean distance measurements between labels
 
-## Requirements
+## Installation
 
-- cd to cloned github repo
-- create a virtual environment for CNL_scalpel i.e. `conda create --name CNL_scalpel python=3.10`
-- `conda activate CNL_scalpel`
--  from the repo home directory `pip install -e .`
-- FreeSurfer is installed locally. See installation [details](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall)
-- FREESURFER_HOME is defined and has been added to your path
+### Requirements
 
-## Introduction
+- Python 3.10 or higher
+- FreeSurfer installed locally ([installation guide](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall))
+- FREESURFER_HOME environment variable defined and added to your PATH
 
-The ScalpelSubject class provides a comprehensive set of tools for analyzing brain surface data. It is designed to work with FreeSurfer output data and provides methods for:
+### Setup
 
-- Loading and visualizing brain surfaces
-- Working with labels (regions of interest on the brain surface)
-- Analyzing boundaries between regions
-- Performing clustering of gyral regions
-- Measuring sulcal depth
+1. Clone the repository:
+```bash
+git clone https://github.com/b-parker/CNL_scalpel.git
+cd CNL_scalpel
+```
 
-## Basic Usage
+2. Create and activate a virtual environment:
+```bash
+conda create --name CNL_scalpel python=3.10
+conda activate CNL_scalpel
+```
 
-Let's start by creating a ScalpelSubject instance:
+3. Install the package in development mode:
+```bash
+pip install -e .
+```
+
+## Quick Start
 
 ```python
 from scalpel.subject import ScalpelSubject
 
 # Initialize a subject
 subject = ScalpelSubject(
-    subject_id="subj01",       # FreeSurfer subject ID
-    hemi="lh",                 # Hemisphere (lh for left, rh for right)
-    subjects_dir="/path/to/subjects_dir",  # FreeSurfer subjects directory
-    surface_type="inflated"    # Surface type (inflated, pial, white)
+    subject_id="subj01",
+    hemi="lh",
+    subjects_dir="/path/to/subjects_dir",
+    surface_type="inflated"
 )
 ```
 
-This loads the subject's cortical surface data from FreeSurfer's output directory.
+## Core Architecture
 
-## Core Properties
+The ScalpelSubject class serves as the main interface and delegates specialized functionality to three core components:
 
-The ScalpelSubject class provides several properties to access the underlying data:
+- **ScalpelVisualizer**: Handles all visualization and plotting operations
+- **ScalpelAnalyzer**: Performs surface analysis, clustering, and gyral-sulcal analysis
+- **ScalpelMeasurer**: Calculates measurements like sulcal depth, surface area, and distances
+
+This architecture maintains a simple user interface while organizing functionality logically.
+
+## Basic Usage
+
+### Accessing Surface Data
 
 ```python
-# Basic information
+# Basic properties
 print(f"Subject ID: {subject.subject_id}")
 print(f"Hemisphere: {subject.hemi}")
 print(f"Surface type: {subject.surface_type}")
 
-# Surface data
-vertices = subject.ras_coords  # RAS (Right-Anterior-Superior) coordinates of all vertices
+# Surface geometry
+vertices = subject.surface_RAS  # RAS coordinates of vertices
 faces = subject.faces          # Triangular faces of the mesh
 vertex_indices = subject.vertex_indexes  # Unique vertex indices
-
-# Anatomical data
-thickness = subject.thickness  # Cortical thickness values
-curv = subject.curv           # Curvature values
-sulc = subject.sulc_vals      # Sulcal surface values
-
-# Get gyrus and sulcus vertices
-gyrus_vertices, gyrus_ras = subject.gyrus[0] subject.gyrus[1]
-sulcus_vertices, sulcus_ras = subject.sulcus[0], subject.gyrus[1]
 ```
 
-## Visualization Methods
+### Working with Labels
 
-The ScalpelSubject class provides methods for visualizing the brain surface and labels:
-
-```python
-# Plot the brain surface
-subject.plot(view='lateral')  # Options: lateral, medial, dorsal, ventral
-
-```
-
-![A](./assets/scalpel_lateral_inflated_plot.png)
-
-## Working with Labels
-
-Labels are regions of interest on the brain surface. The ScalpelSubject class provides methods for working with labels:
+Labels are regions of interest on the brain surface. The interface remains intuitive:
 
 ```python
+# Load a label from FreeSurfer's label directory
+subject.load_label('precentral')
 
-
-# Load a label from a file
-subject.load_label('label_name')
-
-# Create a custom label from vertex indices and coordinates
+# Load a custom label with vertex indices and coordinates
 subject.load_label(
-    'custom_label',
-    label_idxs=vertex_indices,  # Array of vertex indices
-    label_RAS=vertex_coordinates  # Array of RAS coordinates
+    'custom_region',
+    label_idxs=vertex_indices,
+    label_RAS=vertex_coordinates
 )
 
 # Access loaded labels
-label_vertices = subject.labels['label_name'].vertex_indexes
-label_coords = subject.labels['label_name'].ras_coords
+label = subject.labels['precentral']
+vertices = label.vertex_indexes
+coords = label.ras_coords
 
+# Get label measurements (if stats file exists)
+measurements = label.measurements
+surface_area = label.get_measurement('total surface area (mm^2)')
 ```
 
-Labels are loaded into a dictionary stored in ScalpelSubject['labels'], with the label name as the key. From there, labels can be combined, disjointed, thresholded, and written with single lines.
+## Visualization
+
+The visualization system provides interactive plotting capabilities:
 
 ```python
+# Plot the brain surface
+subject.visualizer.plot(view='lateral')
 
+# Plot with specific labels
+subject.visualizer.plot(view='lateral', labels=['precentral', 'postcentral'])
 
+# Plot individual labels with custom colors
+subject.visualizer.plot_label('precentral', view='lateral', face_colors='red')
+
+# Show the interactive scene
+subject.visualizer.show()
 ```
 
-Labels can be plotted on the interactive surfaces once loaded.
+Available views: `'lateral'`, `'medial'`, `'dorsal'`, `'ventral'`
+
+![Lateral View](./assets/scalpel_lateral_inflated_plot.png)
+
+### Plotting Labels
 
 ```python
+# Load and plot a label
 subject.load_label('IPS')
-subject.plot_label('IPS', face_colors = 'blue')
+subject.visualizer.plot_label('IPS', view='lateral', face_colors='blue')
 ```
 
-![I](./assets/scalpel_lateral_inflated_IPS_plot.png)
+![IPS Label](./assets/scalpel_lateral_inflated_IPS_plot.png)
 
-From there, it is simple to combine labels, threshold them, separate them into their disjointed components, and find their centroids. The result of manipulations can then be written to disk with the .write_label method.
+## Analysis and Measurements
+
+### Sulcal Depth Analysis
 
 ```python
-# Combine multiple labels
-subject.combine_labels(['label1', 'label2'], 'combined_label')
+# Calculate sulcal depth (requires pial and gyral-inflated surfaces)
+depth = subject.measurer.calculate_sulcal_depth(
+    'sulcus_label',
+    depth_pct=8,       # Percentage of deepest vertices
+    n_deepest=100,     # Number of deepest vertices
+    use_n_deepest=True # Use n_deepest vs percentage
+)
+print(f"Sulcal depth: {depth} mm")
+```
 
-# Threshold a label based on statistical values
-thresholded_vertices, thresholded_coords, thresholded_stats = subject.threshold_label(
-    'label_name',
-    threshold=2.0,
-    load_label=True,
-    new_name='thresholded_label'
+### Surface Area and Thickness
+
+```python
+# Calculate surface area for a label
+area = subject.measurer.calculate_surface_area('precentral')
+print(f"Surface area: {area} mm²")
+
+# Calculate mean cortical thickness
+thickness = subject.measurer.calculate_cortical_thickness('precentral')
+print(f"Mean thickness: {thickness} mm")
+```
+
+### Distance Measurements
+
+```python
+# Calculate Euclidean distance between label centroids
+distance = subject.measurer.calculate_euclidean_distance(
+    'label1', 'label2', method='centroid'
+)
+print(f"Distance between centroids: {distance} mm")
+
+# Other distance methods: 'nearest', 'farthest'
+```
+
+## Advanced Analysis
+
+### Gyral-Sulcal Analysis
+
+```python
+# Perform comprehensive sulcal-gyral relationship analysis
+results = subject.analyzer.analyze_sulcal_gyral_relationships(
+    'central_sulcus',
+    gyral_clusters=300,
+    sulcal_clusters=5,
+    algorithm='kmeans',
+    load_results=True  # Creates new labels for anterior/posterior gyri
 )
 
-# Find the centroid of a label
-centroid_vertex, centroid_coords = subject.label_centroid('label_name')
-
-# Remove a label
-subject.remove_label('label_name')
-
-# Write a label to a file
-subject.write_label('label_name')
+# Access results
+anterior_gyri = results['anterior_gyri']
+posterior_gyri = results['posterior_gyri']
+adjacency_map = results['adjacency_map']
 ```
 
-## Gyral Clustering
+### Gyral Gap Analysis
 
-The ScalpelSubject class provides methods for clustering gyral regions:
+```python
+# Find the gyral gap between two labels
+gap_analysis = subject.analyzer.find_gyral_gap(
+    'label1', 'label2',
+    method='pca',
+    n_clusters=[2, 3],
+    load_label=True  # Creates shared gyral region label
+)
+
+# Access shared gyral region
+shared_vertices = gap_analysis['shared_gyral_index']
+shared_coords = gap_analysis['shared_gyral_ras']
+```
+
+### Label Thresholding
+
+```python
+# Threshold a label based on various measures
+vertices, coords, values = subject.analyzer.threshold_label(
+    'sulcus_label',
+    threshold_type='percentile',    # 'percentile' or 'absolute'
+    threshold_direction='>=',       # '>', '>=', '<', '<='
+    threshold_value=90,             # 90th percentile
+    threshold_measure='sulc',       # 'sulc', 'thickness', 'curv', 'label_stat'
+    load_label=True,
+    new_name='deep_sulcus'
+)
+```
+
+### Clustering Analysis
 
 ```python
 # Perform gyral clustering
-clusters = subject.perform_gyral_clustering(
+clusters = subject.analyzer.perform_gyral_clustering(
     n_clusters=300,
-    algorithm='kmeans'  # Options: 'kmeans', 'agglomerative', 'dbscan'
+    algorithm='kmeans'  # 'kmeans', 'agglomerative', 'dbscan'
 )
 
-# Access cached gyral clusters
-gyral_clusters = subject.gyral_clusters
-
-# Find shared gyral clusters between two labels
-shared_clusters = subject.find_shared_gyral_clusters('label1', 'label2')
-
-# Get the shared gyral region
-shared_index, shared_ras = subject.get_shared_gyral_region(shared_clusters)
-
-# Find the gyral gap between two labels
-gap_analysis = subject.find_gyral_gap('label1', 'label2')
-```
-
-## Sulcal Depth Analysis
-
-The ScalpelSubject class provides a method for calculating the depth of a sulcus:
-
-```python
-# Calculate the sulcal depth
-depth = subject.calculate_sulcal_depth(
-    'sulcus_label',
-    depth_pct=8,       # Percentage of deepest vertices to use
-    n_deepest=100,     # Number of deepest vertices to use
-    use_n_deepest=True  # If True, use n_deepest; if False, use depth_pct
+# Find deepest sulci
+deepest_indices = subject.analyzer.get_deepest_sulci(
+    percentage=10,
+    label_name='central_sulcus',  # Optional: within specific label
+    load_label=True,
+    result_label_name='deepest_central_sulcus'
 )
-
-print(f"Sulcal depth: {depth} mm")
 ```
 
-## Advanced Examples
-
-### Example 1: Comparing Two Labels
+## Complete Workflow Example
 
 ```python
-# Load two labels
-subject.load_label('label1')
-subject.load_label('label2')
+from scalpel.subject import ScalpelSubject
+import numpy as np
 
-# Plot both labels
-subject.plot(view='lateral', labels=['label1', 'label2'])
-
-# Find the gyral gap between them
-gap_analysis = subject.find_gyral_gap('label1', 'label2')
-
-# Create a new label for the shared gyral region
-subject.load_label(
-    'shared_gyral_region',
-    label_idxs=gap_analysis['shared_gyral_index'],
-    label_RAS=gap_analysis['shared_gyral_ras']
-)
-
-# Plot the shared gyral region
-subject.plot_label('shared_gyral_region', view='lateral')
-```
-
-### Example 2: Sulcal Depth Analysis
-
-```python
-# Load a sulcus label
-subject.load_label('sulcus_label')
-
-# Calculate the sulcal depth
-depth = subject.calculate_sulcal_depth('sulcus_label')
-print(f"Sulcal depth: {depth} mm")
-
-# Threshold the label based on sulcal depth
-subject.threshold_label('sulcus_label', threshold=depth*0.8, load_label=True, new_name='deep_sulcus')
-
-# Plot the deep sulcus label
-subject.plot_label('deep_sulcus', view='lateral')
-```
-
-### Example 3: Complete Analysis Workflow
-
-```python
-# Initialize a subject
+# Initialize subject
 subject = ScalpelSubject("subj01", "lh", "/path/to/subjects_dir", "inflated")
 
-# Load labels
-subject.load_label('label1')
-subject.load_label('label2')
+# Load labels of interest
+subject.load_label('precentral')
+subject.load_label('postcentral')
 
-# Plot the labels
-subject.plot(view='lateral', labels=['label1', 'label2'])
+# Visualize the labels
+subject.visualizer.plot(view='lateral', labels=['precentral', 'postcentral'])
 
-# Find the centroids
-centroid1, coords1 = subject.label_centroid('label1')
-centroid2, coords2 = subject.label_centroid('label2')
-
-# Calculate the distance between centroids
-distance = np.linalg.norm(coords1 - coords2)
-print(f"Distance between centroids: {distance} mm")
-
-# Find the gyral gap
-gap_analysis = subject.find_gyral_gap('label1', 'label2')
-
-# Create a new label for the shared gyral region
-subject.load_label(
-    'shared_gyral_region',
-    label_idxs=gap_analysis['shared_gyral_index'],
-    label_RAS=gap_analysis['shared_gyral_ras']
+# Calculate measurements
+pre_area = subject.measurer.calculate_surface_area('precentral')
+post_area = subject.measurer.calculate_surface_area('postcentral')
+distance = subject.measurer.calculate_euclidean_distance(
+    'precentral', 'postcentral', method='centroid'
 )
 
-# Calculate the sulcal depth if the shared region is a sulcus
-if len(gap_analysis['shared_gyral_index']) > 0:
-    depth = subject.calculate_sulcal_depth('shared_gyral_region')
-    print(f"Sulcal depth of shared region: {depth} mm")
+print(f"Precentral area: {pre_area} mm²")
+print(f"Postcentral area: {post_area} mm²")
+print(f"Distance between centroids: {distance} mm")
 
-# Plot the final result
-subject.plot(view='lateral', labels=['label1', 'label2', 'shared_gyral_region'])
-subject.show()
+# Find the gyral gap between regions
+gap_analysis = subject.analyzer.find_gyral_gap(
+    'precentral', 'postcentral', load_label=True
+)
+
+# Analyze the central sulcus relationships
+if 'central_sulcus' in subject.labels:
+    depth = subject.measurer.calculate_sulcal_depth('central_sulcus')
+    print(f"Central sulcus depth: {depth} mm")
+    
+    # Comprehensive gyral-sulcal analysis
+    relationships = subject.analyzer.analyze_sulcal_gyral_relationships(
+        'central_sulcus', load_results=True
+    )
+
+# Plot final results
+subject.visualizer.plot(
+    view='lateral', 
+    labels=['precentral', 'postcentral', 'precentral_postcentral_shared_gyral']
+)
+subject.visualizer.show()
 ```
 
-This tutorial provides an overview of the main functionality of the ScalpelSubject class. The class provides powerful tools for analyzing brain surface data, particularly for studying the relationship between different regions of the brain.
+## Label Management
+
+```python
+# Combine multiple labels
+combined_vertices = np.concatenate([
+    subject.labels['label1'].vertex_indexes,
+    subject.labels['label2'].vertex_indexes
+])
+combined_coords = np.concatenate([
+    subject.labels['label1'].ras_coords,
+    subject.labels['label2'].ras_coords
+])
+subject.load_label('combined_label', label_idxs=combined_vertices, label_RAS=combined_coords)
+
+# Write labels to disk
+subject.labels['custom_label'].write_label('my_custom_label')
+
+# Calculate label centroid
+centroid_coords = subject.analyzer.label_centroid('precentral', load=True)
+```
+
+## Tutorial
+
+For a comprehensive tutorial with examples, see `tutorial.ipynb` in the repository.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

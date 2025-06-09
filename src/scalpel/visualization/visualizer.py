@@ -137,12 +137,12 @@ class ScalpelVisualizer:
         # Add labels if specified
         if labels:
             for label_name in labels:
-                self.plot_label(label_name, view=view)
+                self._plot_label(label_name, view=view)
         
         # Show the scene
         return scene.show()
     
-    def plot_label(
+    def _plot_label(
         self, 
         label_name: str, 
         view: str = 'lateral', 
@@ -150,7 +150,7 @@ class ScalpelVisualizer:
         face_colors: Union[str, List[int], np.ndarray] = None
     ):
         """
-        Plot a label on the cortical surface.
+        Internal method to plot a label without calling show().
         
         Parameters:
         -----------
@@ -165,8 +165,7 @@ class ScalpelVisualizer:
             
         Returns:
         --------
-        trimesh.Scene
-            The visualized scene
+        None
         """
         # Ensure the subject has this label
         if label_ind is None:
@@ -201,9 +200,38 @@ class ScalpelVisualizer:
         
         # Apply the view
         apply_rotation(scene, view, self._subject.hemi, reset=True)
+
+    def plot_label(
+        self, 
+        label_name: str, 
+        view: str = 'lateral', 
+        label_ind: np.ndarray = None, 
+        face_colors: Union[str, List[int], np.ndarray] = None
+    ):
+        """
+        Plot a label on the cortical surface.
+        
+        Parameters:
+        -----------
+        label_name : str
+            Name of the label to plot
+        view : str, default='lateral'
+            View angle ('lateral', 'medial', 'ventral', 'dorsal')
+        label_ind : np.ndarray, optional
+            Vertex indices for the label, if not using a stored label
+        face_colors : Union[str, List[int], np.ndarray], optional
+            Colors for the label faces
+            
+        Returns:
+        --------
+        trimesh.Scene
+            The visualized scene
+        """
+        # Use the internal method to add the label
+        self._plot_label(label_name, view, label_ind, face_colors)
         
         # Show the scene
-        return scene.show()
+        return self.scene.show()
     
     def remove_label(self, label_name: str):
         """

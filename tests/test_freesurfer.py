@@ -1,7 +1,6 @@
 import pytest
 import os
 from pathlib import Path
-from scalpel.utilities.fs_config import get_freesurfer_home
 
 
 
@@ -13,29 +12,29 @@ def freesurfer_home():
         return Path(fs_home)
     
     
-def test_freesurfer():
+def test_freesurfer(freesurfer_home):
     #Ensure FreeSurver is properly configured and bert exists
-    assert get_freesurfer_home().exists(), "FREESURFER_HOME should exist"
-    assert get_freesurfer_home().is_dir(), "FREESURFER_HOME should be a directory"
+    assert freesurfer_home.exists(), "FREESURFER_HOME should exist"
+    assert freesurfer_home.is_dir(), "FREESURFER_HOME should be a directory"
 
-    directory_listing = os.listdir(get_freesurfer_home() / 'subjects')
+    directory_listing = os.listdir(freesurfer_home / 'subjects')
     assert "bert" in directory_listing, "Expected 'bert' directory in FreeSurfer home"
 
-def test_ScalpelSubject_load():
+def test_ScalpelSubject_load(freesurfer_home):
     # Test loading a subject using ScalpelSubject with bert
     from scalpel.subject import ScalpelSubject
     
-    subject_directory = Path(get_freesurfer_home()) / "subjects"
+    subject_directory = Path(freesurfer_home) / "subjects"
     subject = ScalpelSubject(subject_id="bert", subjects_dir = subject_directory, hemi = 'lh')
     assert subject.subject_id == "bert", "Expected subject ID to be 'bert'"
-    assert subject.subject_fs_path == get_freesurfer_home() / 'subjects' / 'bert', "Expected FreeSurfer home to be set correctly"
+    assert subject.subject_fs_path == freesurfer_home / 'subjects' / 'bert', "Expected FreeSurfer home to be set correctly"
     assert subject.gyrus[0] is not None, "Gyral components not properly identified"
 
-def test_ScalpelSubject_load_label():
+def test_ScalpelSubject_load_label(freesurfer_home):
     # Test loading a label using ScalpelSubject with bert
     from scalpel.subject import ScalpelSubject
 
-    subject_directory = Path(get_freesurfer_home()) / "subjects"    
+    subject_directory = Path(freesurfer_home) / "subjects"    
     print(subject_directory.resolve())
     subject = ScalpelSubject(subject_id="bert", subjects_dir = subject_directory, hemi = 'lh')
     ## test loading bert labels
