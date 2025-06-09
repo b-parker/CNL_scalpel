@@ -114,24 +114,83 @@ class ScalpelSubject:
         """
         return self._labels
     
+    # Surface loading methods
+    def _load_surface(self, surface_name: str):
+        """Load a specific surface by name"""
+        surface_path = self._subject_fs_path / 'surf' / f'{self._hemi}.{surface_name}'
+        if not surface_path.exists():
+            raise FileNotFoundError(f"Surface not found: {surface_path}")
+        return nib.freesurfer.read_geometry(str(surface_path))
+    
     @cached_property
     def white_v(self):
         """White matter surface vertices"""
-        return self.analyzer.white_v
+        white_surface = self._load_surface('white')
+        return white_surface[0]  # vertices
+    
+    @cached_property
+    def pial_v(self):
+        """Pial surface vertices"""
+        pial_surface = self._load_surface('pial')
+        return pial_surface[0]  # vertices
+    
+    @cached_property
+    def gyrif_v(self):
+        """Gyral-inflated surface vertices (requires recon-all -all)"""
+        try:
+            gyrif_surface = self._load_surface('inflated')  # or 'sphere.reg' depending on your setup
+            return gyrif_surface[0]  # vertices
+        except FileNotFoundError:
+            print(f"Warning: Gyral-inflated surface not found for {self._hemi}. Using inflated surface.")
+            return self.surface_RAS
+    
+    # Curvature and morphometric data loading
+    def _load_curv_file(self, curv_name: str):
+        """Load a curvature file"""
+        curv_path = self._subject_fs_path / 'surf' / f'{self._hemi}.{curv_name}'
+        if not curv_path.exists():
+            raise FileNotFoundError(f"Curvature file not found: {curv_path}")
+        return nib.freesurfer.read_morph_data(str(curv_path))
     
     @cached_property
     def mean_curvature(self):
-        """Mean curvature values"""
-        return self.analyzer.mean_curvature
+        """Mean curvature values from FreeSurfer .curv file"""
+        return self._load_curv_file('curv')
     
     @cached_property
     def gaussian_curvature(self):
         """Gaussian curvature values"""
-        return self.analyzer.gaussian_curvature
+        try:
+            return self._load_curv_file('curv.K')
+        except FileNotFoundError:
+            print(f"Warning: Gaussian curvature file not found for {self._hemi}")
+            return np.zeros(len(self.surface_RAS))
     
-    ############################
-    # Delegation to Specialized Classes
-    ############################
+    @cached_property
+    def thickness(self):
+        """Cortical thickness values from FreeSurfer .thickness file"""
+        return self._load_curv_file('thickness')
+    
+    @cached_property
+    def sulc_vals(self):
+        """Sulcal depth values from FreeSurfer .sulc file"""
+        return self._load_curv_file('sulc')
+    
+    @cached_property
+    def curv(self):
+        """Curvature values from FreeSurfer .curv file (alias for mean_curvature)"""
+        return self.mean_curvature
+    
+    # Derived properties based on curvature
+    @cached_property
+    def gyrus(self):
+        """Get gyral vertices based on curvature (negative curvature)"""
+        return np.where(self.mean_curvature < 0)[0]
+    
+    @cached_property
+    def sulcus(self):
+        """Get sulcal vertices based on curvature (positive curvature)"""
+        return np.where(self.mean_curvature > 0)[0]
     
     @cached_property
     def plotter(self):
@@ -153,6 +212,15 @@ class ScalpelSubject:
         if not hasattr(self, '_measurer'):
             self._measurer = ScalpelMeasurer(self)
         return self._measurer
+    
+    @property
+    def gyral_clusters(self):
+        """Perform K-means clustering on gyral regions."""
+        return self.analyzer.gyral_clusters
+    
+    @cached_property
+    def adjacency_matrix(self):
+        return self.analyzer.adjacency
     
     ############################
     # Label Management
@@ -261,7 +329,7 @@ class ScalpelSubject:
         )
     
     ############################
-    # Visualization Methods (delegated to plotter)
+    # Visualization Methods 
     ############################
     
     def plot(self, view: str = 'lateral', labels: List[str] = None):
@@ -363,53 +431,8 @@ class ScalpelSubject:
         )
     
     ############################
-    # Analysis Methods (delegated to analyzer)
+    # Analysis Methods 
     ############################
-    
-    @cached_property
-    def curv(self):
-        """Curvature values from FreeSurfer .curv file"""
-        return self.analyzer.curv
-    
-    @cached_property
-    def thickness(self):
-        """Cortical thickness values from FreeSurfer .thickness file"""
-        return self.analyzer.thickness
-    
-    @cached_property
-    def sulc_vals(self):
-        """Sulcal depth values from FreeSurfer .sulc file"""
-        return self.analyzer.sulc_vals
-    
-    @cached_property
-    def gyrus(self):
-        """Get gyral vertices based on curvature"""
-        return self.analyzer.gyrus
-    
-    @cached_property
-    def sulcus(self):
-        """Get sulcal vertices based on curvature"""
-        return self.analyzer.sulcus
-
-    @cached_property
-    def pial_v(self):
-        """Get pial vertices"""
-        return self.analyzer.pial_v
-    
-    @cached_property
-    def gyrif_v(self):
-        """Get gyral vertices"""
-        return self.analyzer.gyrif_v
-    
-    @property
-    def gyral_clusters(self):
-        """Perform K-means clustering on gyral regions."""
-        return self.analyzer.gyral_clusters
-    
-    @cached_property
-    def adjacency_matrix(self):
-        return self.analyzer.adjacency
-    
     
     def perform_gyral_clustering(self, n_clusters: int = 300, algorithm: str = 'kmeans'):
         """
@@ -473,8 +496,6 @@ class ScalpelSubject:
             )
 
         return boundary, self.surface_RAS[boundary]
-
-
 
     def find_closest_clusters(self, analysis_results1: dict, analysis_results2: dict):
         """
