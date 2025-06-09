@@ -114,6 +114,21 @@ class ScalpelSubject:
         """
         return self._labels
     
+    @cached_property
+    def white_v(self):
+        """White matter surface vertices"""
+        return self.analyzer.white_v
+    
+    @cached_property
+    def mean_curvature(self):
+        """Mean curvature values"""
+        return self.analyzer.mean_curvature
+    
+    @cached_property
+    def gaussian_curvature(self):
+        """Gaussian curvature values"""
+        return self.analyzer.gaussian_curvature
+    
     ############################
     # Delegation to Specialized Classes
     ############################
@@ -648,7 +663,7 @@ class ScalpelSubject:
     ############################
     
     def calculate_sulcal_depth(self, label_name: str, depth_pct: float = 8, 
-                             n_deepest: int = 100, use_n_deepest: bool = True):
+                             n_deepest: int = 100, use_n_deepest: bool = True) -> float:
         """
         Calculate the depth of a sulcus.
         
@@ -672,34 +687,97 @@ class ScalpelSubject:
             use_n_deepest=use_n_deepest
         )
     
-    def calculate_surface_area(self, label_name: Optional[str] = None):
+    def calculate_surface_area(self, label_name: Optional[str] = None) -> float:
         """
         Calculate the surface area of a label or the entire cortical surface.
+        Replicates FreeSurfer's surface area calculation from mris_anatomical_stats
         
         Parameters:
             label_name: Optional[str]
                 Name of the label to calculate area for. If None, calculates for the entire cortex.
                 
         Returns:
-            float: The surface area in mm^2
+            float: The surface area in mm²
         """
         return self.measurer.calculate_surface_area(label_name=label_name)
     
-    def calculate_cortical_thickness(self, label_name: Optional[str] = None):
+    def calculate_gray_matter_volume(self, label_name: Optional[str] = None) -> float:
         """
-        Calculate the mean cortical thickness of a label or the entire cortical surface.
+        Calculate gray matter volume between white and pial surfaces.
+        Replicates FreeSurfer's volume calculation from mris_anatomical_stats
+        
+        Parameters:
+            label_name: Optional[str]
+                Name of the label to calculate volume for. If None, calculates for the entire cortex.
+                
+        Returns:
+            float: The gray matter volume in mm³
+        """
+        return self.measurer.calculate_gray_matter_volume(label_name=label_name)
+    
+    def calculate_cortical_thickness(self, label_name: Optional[str] = None) -> Tuple[float, float]:
+        """
+        Calculate the mean and standard deviation of cortical thickness.
+        Replicates FreeSurfer's thickness calculation from mris_anatomical_stats
         
         Parameters:
             label_name: Optional[str]
                 Name of the label to calculate thickness for. If None, calculates for the entire cortex.
                 
         Returns:
-            float: The mean cortical thickness in mm
+            Tuple[float, float]: Mean cortical thickness and standard deviation in mm
         """
         return self.measurer.calculate_cortical_thickness(label_name=label_name)
     
+    def calculate_absolute_curvature(self, label_name: Optional[str] = None, 
+                                   curvature_type: str = 'mean') -> float:
+        """
+        Calculate integrated rectified (absolute) curvature.
+        Replicates FreeSurfer's MRIScomputeAbsoluteCurvature function.
+        
+        Parameters:
+            label_name: Optional[str]
+                Name of the label to calculate curvature for. If None, calculates for the entire cortex.
+            curvature_type: str
+                Type of curvature ('mean' or 'gaussian')
+                
+        Returns:
+            float: Integrated rectified curvature
+        """
+        return self.measurer.calculate_absolute_curvature(
+            label_name=label_name,
+            curvature_type=curvature_type
+        )
     
-    def calculate_euclidean_distance(self, label1: str, label2: str, method: str = 'centroid'):
+    def calculate_curvature_indices(self, label_name: Optional[str] = None) -> Tuple[float, float]:
+        """
+        Calculate folding index and intrinsic curvature index.
+        Replicates FreeSurfer's MRIScomputeCurvatureIndices function.
+        
+        Parameters:
+            label_name: Optional[str]
+                Name of the label to calculate indices for. If None, calculates for the entire cortex.
+                
+        Returns:
+            Tuple[float, float]: Folding index and intrinsic curvature index
+        """
+        return self.measurer.calculate_curvature_indices(label_name=label_name)
+    
+    def calculate_all_freesurfer_stats(self, label_name: str) -> Dict[str, float]:
+        """
+        Calculate all FreeSurfer anatomical statistics for a label.
+        Replicates the complete output of mris_anatomical_stats
+        
+        Parameters:
+            label_name: str
+                Name of the label to calculate statistics for
+                
+        Returns:
+            Dict[str, float]: Dictionary containing all anatomical measurements
+        """
+        return self.measurer.calculate_all_freesurfer_stats(label_name=label_name)
+    
+    def calculate_euclidean_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
         """
         Calculate the Euclidean distance between two labels.
         
@@ -720,7 +798,7 @@ class ScalpelSubject:
             method=method
         )
     
-    def calculate_label_overlap(self, label1: str, label2: str):
+    def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:
         """
         Calculate the overlap between two labels.
         
@@ -731,7 +809,7 @@ class ScalpelSubject:
                 Name of the second label
                 
         Returns:
-            dict: A dictionary containing overlap metrics
+            Dict[str, float]: A dictionary containing overlap metrics
         """
         return self.measurer.calculate_label_overlap(
             label1=label1,
@@ -739,7 +817,7 @@ class ScalpelSubject:
         )
     
     def export_measurements(self, labels: List[str], measurements: List[str], 
-                          output_file: str, delimiter: str = ','):
+                          output_file: str, delimiter: str = ',') -> bool:
         """
         Export measurements for multiple labels to a file.
         
@@ -747,7 +825,14 @@ class ScalpelSubject:
             labels: List[str]
                 List of label names to measure
             measurements: List[str]
-                List of measurements to calculate ('area', 'thickness', 'depth')
+                List of measurements to calculate:
+                - 'area': Surface area
+                - 'thickness': Cortical thickness  
+                - 'depth': Sulcal depth
+                - 'volume': Gray matter volume
+                - 'curvature': Mean and Gaussian curvature
+                - 'indices': Folding and intrinsic curvature indices
+                - 'all_freesurfer': All FreeSurfer stats
             output_file: str
                 Path to the output file
             delimiter: str
