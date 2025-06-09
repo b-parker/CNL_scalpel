@@ -17,6 +17,243 @@ try:
     from typing import NoneType
 except ImportError:
     NoneType = type(None)
+
+
+def freesurfer_recon_all(
+    subject_id: str,
+    directive: Optional[str] = None,
+    input_files: Optional[List[str]] = None,
+    hemi: Optional[str] = None,
+    autorecon_stage: Optional[str] = None,
+    expert_options: Optional[Dict] = None,
+    seed_points: Optional[Dict] = None,
+    watershed_options: Optional[Dict] = None,
+    normalization_options: Optional[Dict] = None,
+    deface: bool = False,
+    notification_file: Optional[str] = None,
+    wait_for_file: Optional[str] = None,
+    log_file: Optional[str] = None,
+    status_file: Optional[str] = None,
+    no_append: bool = False,
+    subjects_dir: Optional[str] = None,
+    freesurfer_home: Optional[str] = None,
+    debug: bool = False,
+) -> sp.CompletedProcess:
+    """
+    Wrapper for FreeSurfer's recon-all command which performs all or part of the cortical reconstruction process.
+    
+    Args:
+        subject_id: The subject ID to process
+        directive: Main processing directive ('all', 'autorecon-all', 'autorecon1', 'autorecon2', 'autorecon3', etc.)
+        input_files: List of input files (DICOM or NIFTI)
+        hemi: Hemisphere to process ('lh', 'rh', or None for both)
+        autorecon_stage: Specific autorecon stage ('autorecon2-cp', 'autorecon2-wm', 'autorecon2-pial')
+        expert_options: Dictionary of expert options (replaces -expert file option)
+        seed_points: Dictionary with seed points for corpus callosum, pons, etc.
+            Format: {'cc': (C,R,S), 'pons': (C,R,S), 'lh': (C,R,S), 'rh': (C,R,S)}
+        watershed_options: Dictionary with watershed/skull stripping options
+            Format: {'threshold': float, 'less': bool, 'more': bool, 'atlas': bool, 'seed': (C,R,S)}
+        normalization_options: Dictionary with normalization options
+            Format: {'nu_iterations': int, 'norm3d_iterations': int, 'norm_max_grad': float}
+        deface: Whether to deface the subject
+        notification_file: Path to notification file to create after completion
+        wait_for_file: Path to file to wait for before starting
+        log_file: Path to log file
+        status_file: Path to status file
+        no_append: Start new log files instead of appending
+        subjects_dir: FreeSurfer subjects directory
+        freesurfer_home: FreeSurfer installation directory
+        debug: Print debug information
+        
+    Returns:
+        CompletedProcess object with command results
+    """
+    # Validate inputs
+    if not subject_id:
+        raise ValueError("Subject ID must be provided")
+    
+    if hemi and hemi not in ['lh', 'rh']:
+        raise ValueError(f"Hemisphere must be 'lh' or 'rh', got {hemi}")
+    
+    # Find FreeSurfer home
+    if freesurfer_home is None:
+        freesurfer_home = os.environ.get('FREESURFER_HOME')
+        if not freesurfer_home:
+            # Common FreeSurfer installation paths
+            possible_paths = [
+                '/usr/local/freesurfer',
+                '/opt/freesurfer',
+                '/home/freesurfer',
+                '/usr/share/freesurfer'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    freesurfer_home = path
+                    break
+            if not freesurfer_home:
+                raise ValueError("FREESURFER_HOME not found. Please set it manually.")
+    
+    # Set up environment
+    env = os.environ.copy()
+    if subjects_dir:
+        env['SUBJECTS_DIR'] = str(Path(subjects_dir).absolute())
+    elif 'SUBJECTS_DIR' not in env:
+        raise ValueError("SUBJECTS_DIR must be specified either as an argument or environment variable")
+    
+    env['FREESURFER_HOME'] = freesurfer_home
+    
+    # FreeSurfer paths
+    fs_bin = os.path.join(freesurfer_home, 'bin')
+    fs_lib = os.path.join(freesurfer_home, 'lib')
+    
+    # Update PATH and LD_LIBRARY_PATH
+    env['PATH'] = f"{fs_bin}:{env.get('PATH', '')}"
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = f"{fs_lib}:{env['LD_LIBRARY_PATH']}"
+    else:
+        env['LD_LIBRARY_PATH'] = fs_lib
+    
+    # Print debug info
+    if debug:
+        print(f"Using FREESURFER_HOME: {env['FREESURFER_HOME']}")
+        print(f"Using SUBJECTS_DIR: {env['SUBJECTS_DIR']}")
+    
+    # Build command
+    cmd = ['recon-all']
+    
+    # Required arguments
+    cmd.extend(['-subjid', subject_id])
+    
+    # Input files
+    if input_files:
+        for input_file in input_files:
+            cmd.extend(['-i', input_file])
+    
+    # Main directive
+    if directive:
+        cmd.extend([f'-{directive}'])
+    
+    # Hemisphere
+    if hemi:
+        cmd.extend(['-hemi', hemi])
+    
+    # Autorecon stage
+    if autorecon_stage:
+        cmd.extend([f'-{autorecon_stage}'])
+    
+    # Seed points
+    if seed_points:
+        if 'pons' in seed_points:
+            c, r, s = seed_points['pons']
+            cmd.extend(['-pons-crs', str(c), str(r), str(s)])
+        
+        if 'cc' in seed_points:
+            c, r, s = seed_points['cc']
+            cmd.extend(['-cc-crs', str(c), str(r), str(s)])
+        
+        if 'lh' in seed_points:
+            c, r, s = seed_points['lh']
+            cmd.extend(['-lh-crs', str(c), str(r), str(s)])
+        
+        if 'rh' in seed_points:
+            c, r, s = seed_points['rh']
+            cmd.extend(['-rh-crs', str(c), str(r), str(s)])
+    
+    # Watershed/skull stripping options
+    if watershed_options:
+        if watershed_options.get('less', False):
+            cmd.append('-wsless')
+        
+        if watershed_options.get('more', False):
+            cmd.append('-wsmore')
+        
+        if watershed_options.get('atlas', False):
+            cmd.append('-wsatlas')
+        
+        if 'threshold' in watershed_options:
+            cmd.extend(['-wsthresh', str(watershed_options['threshold'])])
+        
+        if 'seed' in watershed_options:
+            c, r, s = watershed_options['seed']
+            cmd.extend(['-wsseed', str(c), str(r), str(s)])
+    
+    # Normalization options
+    if normalization_options:
+        if 'nu_iterations' in normalization_options:
+            cmd.extend(['-nuiterations', str(normalization_options['nu_iterations'])])
+        
+        if 'norm3d_iterations' in normalization_options:
+            cmd.extend(['-norm3diters', str(normalization_options['norm3d_iterations'])])
+        
+        if 'norm_max_grad' in normalization_options:
+            cmd.extend(['-normmaxgrad', str(normalization_options['norm_max_grad'])])
+    
+    # Expert options file
+    if expert_options:
+        # Create a temporary expert options file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
+            for key, value in expert_options.items():
+                temp_file.write(f"{key} {value}\n")
+            expert_file_path = temp_file.name
+        
+        cmd.extend(['-expert', expert_file_path])
+    
+    # Additional options
+    if deface:
+        cmd.append('-deface')
+    
+    # Notification files
+    if notification_file:
+        cmd.extend(['-notify', notification_file])
+    
+    if wait_for_file:
+        cmd.extend(['-waitfor', wait_for_file])
+    
+    # Log files
+    if log_file:
+        cmd.extend(['-log', log_file])
+    
+    if status_file:
+        cmd.extend(['-status', status_file])
+    
+    if no_append:
+        cmd.append('-noappend')
+    
+    # Log the command
+    cmd_str = ' '.join(cmd)
+    if debug:
+        print(f"Running command: {cmd_str}")
+    
+    # Execute command with error handling
+    try:
+        result = sp.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            env=env
+        )
+        if debug:
+            print("Command succeeded")
+            print(f"Output: {result.stdout}")
+        
+        # Clean up temp file if created
+        if expert_options and 'expert_file_path' in locals():
+            os.unlink(expert_file_path)
+            
+        return result
+        
+    except sp.CalledProcessError as e:
+        print(f"Command failed with return code {e.returncode}")
+        print(f"Error output: {e.stderr}")
+        print(f"Standard output: {e.stdout}")
+        
+        # Clean up temp file if created
+        if expert_options and 'expert_file_path' in locals():
+            os.unlink(expert_file_path)
+            
+        raise
     
 def freesurfer_label2label(
     src_subject: str,
@@ -1751,5 +1988,6 @@ def create_MPM(subjects_dir: str, subjects_list: str, fsaverage_space_labels: st
             pass
         
     print('Left Hemisphere PROB Binary MPMs written for ', left_out_sub, '\n\n\n')
+
 
 

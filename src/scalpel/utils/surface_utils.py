@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import trimesh as tm
 import networkx as nx
 #import meshplot 
-from scalpel.utilities.freesurfer_utils import *
+from scalpel.utils.freesurfer_utils import *
 
 
 
@@ -440,7 +440,7 @@ def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
             ## Seems infinite
             ## Not adding any points
             np.append(label_points, vertex)
-            for adj in adjacenct_nodes(adj_mat, vertex):
+            for adj in adjacent_nodes(adj_mat, vertex):
                 if adj not in visited:
                     queue.append(adj)
                     np.append(visited, adj)

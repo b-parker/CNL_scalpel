@@ -2,7 +2,7 @@
 from typing import List
 import numpy as np
 import trimesh as tm
-from scalpel.utilities import surface_utils
+from scalpel.utils import surface_utils
 NoneType = type(None)
 
 # Define a dictionary of default colors
@@ -41,7 +41,7 @@ DEFAULT_COLORS = {
 
 def initialize_scene(mesh, view: str, hemi: str, surface_type: str):
     scene = None
-    if surface_type == 'inflated':
+    if surface_type != 'wompwomp':
         scene = tm.Scene([mesh['gyrus'], mesh['sulcus']])
         apply_rotation(scene, view, hemi, reset=True)  # Reset to original position
     else:
