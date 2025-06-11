@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import csv
 
-# Import utilities
+
 from scalpel.utils import surface_utils
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class ScalpelMeasurer:
     """
-    Class for measuring brain surface data.
+    Class for measuring surface data.
     
     This class provides measurement functionality for a ScalpelSubject,
     including calculation of sulcal depth, surface area, cortical thickness,

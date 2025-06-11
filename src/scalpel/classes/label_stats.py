@@ -12,7 +12,7 @@ class LabelStats:
     Class to hold label statistics for a single label.
     """
 
-    def __init__(self, label: 'Label', stats_filepath: Optional[Union[str, Path]] = None):
+    def __init__(self, label: 'Label', stats_filepath: Optional[Union[str, Path]] = None, verbose = False):
         """
         Initialize the LabelStats object.
 
@@ -29,7 +29,7 @@ class LabelStats:
         # Parse the stats file if it exists
         if self._stats_filepath.exists():
             self._parse_stats_file()
-        else:
+        elif verbose:
             print(f"Warning: Stats file not found at {self._stats_filepath}")
     
     def _determine_stats_filepath(self, stats_filepath: Optional[Union[str, Path]]) -> Path:

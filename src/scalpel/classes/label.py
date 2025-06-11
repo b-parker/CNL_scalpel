@@ -12,7 +12,7 @@ class Label(object):
     """
     
     def __init__(self, name, hemi, subject_id=None, subjects_dir=None, vertex_indexes=None, 
-                 ras_coords=None, stat=None, custom_label_path=None):
+                 ras_coords=None, stat=None, custom_label_path=None, read_label_stats = False):
         """
         Constructor for the Label class.
 
@@ -30,7 +30,8 @@ class Label(object):
         self._hemi = hemi
         self._subject_id = subject_id
         self._subjects_dir = subjects_dir
-        self._label_stats = None  # Will be lazily loaded when needed
+        self._label_stats = None  
+        self._read_label_stats = read_label_stats
 
         if custom_label_path:
             self._vertex_indexes, self._ras_coords, self._stat = fsu.read_label(custom_label_path, include_stat=True)
@@ -84,7 +85,7 @@ class Label(object):
         Dict[str, Any]
             Dictionary containing label statistics measurements
         """
-        if self._label_stats is None:
+        if self._label_stats is None and self._read_label_stats:
             self.load_stats()
         
         return self._label_stats.measurements if self._label_stats else {}
@@ -209,7 +210,7 @@ class Label(object):
         Any
             The value of the measurement, or None if not found
         """
-        if self._label_stats is None:
+        if self._label_stats is None and self._read_label_stats:
             self.load_stats()
         
         return self._label_stats.get_measurement(key) if self._label_stats else None
