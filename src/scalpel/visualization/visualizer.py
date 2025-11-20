@@ -81,8 +81,6 @@ class ScalpelVisualizer:
         gyrus = self._subject.analyzer.gyrus
         sulcus = self._subject.analyzer.sulcus
         
-        print('Initial plot builds cortical mesh (~1 minute)')
-        
         # Create meshes for gyri and sulci
         gyrus_mesh = surface_utils.make_mesh(
             ras_coords, faces, gyrus[0], face_colors=gyrus_gray

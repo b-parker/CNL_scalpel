@@ -951,27 +951,20 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all 
     """
     Takes a list of faces and label indices
     Returns the faces that contain the indices
-
-    INPUT:
-    faces: array of faces composed of 3 points
-    label_ind: array of indices of points in the label (first colum of label file; 0 index in read_label)
-    include_all: bool - if True, return faces that contain any of the points in the label
-
-    OUTPUT:
-    label_faces: array of faces that contain the points in the label
     """
+    # Convert to set for O(1) lookup instead of O(n)
+    label_set = set(label_ind)
+    
     all_label_faces = []
     if include_all == False:
         for face in faces:
-            if all([point in label_ind for point in face]):
+            if all(point in label_set for point in face):
                 all_label_faces.append(face)
     else:
         for face in faces:
-            if any([point in label_ind for point in face]):
+            if any(point in label_set for point in face):
                 all_label_faces.append(face)
     return np.array(all_label_faces)
-
-
         
 
 

@@ -214,3 +214,15 @@ class Label(object):
             self.load_stats()
         
         return self._label_stats.get_measurement(key) if self._label_stats else None
+    
+    def __str__(self):
+        label_summary = f"Subject ID: {self._subject_id}\n"
+        label_summary = f"Label Name: {self._label_name}\n"
+        label_summary += f"Hemisphere: {self.hemi}\n"
+        label_summary += f"Number of Vertices: {len(self._vertex_indexes):,}\n"
+        
+            
+        return label_summary
+    
+    def __repr__(self):
+        return f"<Subject id= {self._subject_id} Label name={self._label_name} hemi={self.hemi} vertices={len(self._vertex_indexes):,}>"
