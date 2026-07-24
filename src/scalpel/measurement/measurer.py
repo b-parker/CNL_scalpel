@@ -448,11 +448,9 @@ class ScalpelMeasurer:
         folding_idx, intrinsic_idx = self.calculate_curvature_indices(label_name)
         results['folding_index'] = folding_idx
         results['intrinsic_curvature_index'] = intrinsic_idx
-        
-        # Store all results in the label's measurements
-        for key, value in results.items():
-            self.subject.labels[label_name].measurements[key] = value
-        
+
+        # The sub-methods above already cache their (descriptive) keys onto the
+        # label; return the compact dict for programmatic use.
         return results
     
     def calculate_euclidean_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
