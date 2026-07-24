@@ -10,6 +10,7 @@ from scalpel.visualization.visualizer import ScalpelVisualizer
 from scalpel.measurement.measurer import ScalpelMeasurer
 from scalpel.classes.label import Label
 from scalpel.utils import surface_utils
+from scalpel.utils import freesurfer_utils as fsu
 
 class ScalpelSubject:
     """
@@ -319,32 +320,72 @@ class ScalpelSubject:
         combined_ras = self.surface_RAS[combined_ind]
         self.load_label(new_label_name, combined_ind, combined_ras)
     
-    def write_label(self, label_name: str, save_label_name: str = None, custom_label_dir: str = None, overwrite: bool = False):
+    def write_label(self, label_name: str, save_label_name: str = None, custom_label_dir: str = None, overwrite: bool = False, coords_surface: str = 'white'):
         """
         Write a label to a file.
+
+        RAS coordinates are re-derived from ``coords_surface`` (default ``'white'``)
+        using the label's vertex indices, so the written file is consistent with
+        FreeSurfer regardless of the surface the subject was loaded on. Pass
+        ``coords_surface=None`` to write the label's own stored coordinates.
 
         Parameters:
         - label_name (str): Name of the label.
         - save_label_name (str): Name of the label to save.
         - custom_label_dir (str): Path to save the label.
         - overwrite (bool): Whether to overwrite existing file.
+        - coords_surface (str): Surface whose RAS coordinates to write
+          (e.g. 'white', 'pial', 'inflated'), or None to keep the label's own.
 
         Returns:
         - None
         """
+        if save_label_name is None:
+            save_label_name = label_name
+
+        self._write_label(
+            self._labels[label_name],
+            save_label_name=save_label_name,
+            custom_label_dir=custom_label_dir,
+            overwrite=overwrite,
+            coords_surface=coords_surface,
+        )
+
+    def _write_label(self, label, save_label_name: str, custom_label_dir=None, overwrite: bool = False, coords_surface: str = 'white'):
+        """Write a Label object to disk, deriving coords from ``coords_surface``."""
         if custom_label_dir is not None:
             label_dir_path = Path(custom_label_dir)
         else:
             label_dir_path = self.subject_fs_path / "label"
-        
-        if save_label_name is None:
-            save_label_name = label_name
 
-        self._labels[label_name].write_label(
-            label_name=save_label_name, 
-            label_dir_path=label_dir_path, 
-            overwrite=overwrite
+        if coords_surface is None:
+            label_RAS = label.label_RAS
+            coords_name = self.surface_type
+        else:
+            label_RAS = self._surface_vertices(coords_surface)[label.vertex_indexes]
+            coords_name = coords_surface
+
+        fsu.write_label(
+            label_name=save_label_name,
+            label_indexes=label.vertex_indexes,
+            label_RAS=label_RAS,
+            hemi=self.hemi,
+            subject_id=self.subject_id,
+            subjects_dir=self.subjects_dir,
+            surface_type=coords_name,
+            custom_label_dir=label_dir_path,
+            overwrite=overwrite,
         )
+
+    def _surface_vertices(self, surface_name: str) -> np.ndarray:
+        """RAS vertices for a named surface, reusing cached surfaces where possible."""
+        if surface_name == self.surface_type:
+            return self.surface_RAS
+        if surface_name == 'white':
+            return self.white_v
+        if surface_name == 'pial':
+            return self.pial_v
+        return self._load_surface(surface_name)[0]
     
     ############################
     # Visualization Methods 

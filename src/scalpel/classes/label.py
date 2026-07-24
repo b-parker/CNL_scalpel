@@ -156,28 +156,27 @@ class Label(object):
 
         return np.array(sulcus_index), np.array(sulcus_RAS)
     
-    def write_label(self, label_name, label_dir_path=None, overwrite=False):
+    def write_label(self, label_name, label_dir_path=None, overwrite=False, coords_surface='white'):
         """
         Writes label to file.
+
+        RAS coordinates are re-derived from ``coords_surface`` (default ``'white'``)
+        for FreeSurfer consistency; pass ``coords_surface=None`` to write the
+        label's own stored coordinates.
 
         Parameters:
         - label_name (str): Name for the output label file.
         - label_dir_path (str, optional): Directory path to save the label. Defaults to None.
         - overwrite (bool, optional): Whether to overwrite existing file. Defaults to False.
+        - coords_surface (str, optional): Surface whose RAS coordinates to write, or
+          None to keep the label's own. Defaults to 'white'.
         """
-        if label_dir_path is None:
-            label_dir_path = self._subjects_dir / self._subject_id / 'label' 
-            
-        fsu.write_label(
-            label_name=label_name, 
-            label_indexes=self._vertex_indexes, 
-            label_RAS=self._ras_coords, 
-            hemi=self.subject.hemi,
-            subjects_dir=self.subject.subjects_dir,
-            subject_id=self.subject.subject_id,
-            surface_type=self.subject.surface_type,
-            custom_label_dir=label_dir_path, 
-            overwrite=overwrite
+        self.subject._write_label(
+            self,
+            save_label_name=label_name,
+            custom_label_dir=label_dir_path,
+            overwrite=overwrite,
+            coords_surface=coords_surface,
         )
     
     def load_stats(self, stats_filepath: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
