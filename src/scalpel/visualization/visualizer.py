@@ -23,6 +23,29 @@ from scalpel.utils import surface_utils
 if TYPE_CHECKING:
     from scalpel.subject import ScalpelSubject
 
+
+def _patch_pyglet_cocoa_teardown():
+    """Neutralize a pyglet/macOS bug where window teardown after an offscreen
+    render raises ``AttributeError`` in ``CocoaAlternateEventLoop.exit`` (missing
+    ``platform_event_loop``). The rendered image is captured before teardown, so
+    swallowing that error lets ``save_image`` return the image in a script."""
+    try:
+        from pyglet.app.cocoa import CocoaAlternateEventLoop
+    except Exception:
+        return
+    if getattr(CocoaAlternateEventLoop, "_scalpel_patched", False):
+        return
+    _orig_exit = CocoaAlternateEventLoop.exit
+
+    def _safe_exit(self):
+        try:
+            _orig_exit(self)
+        except AttributeError:
+            pass
+
+    CocoaAlternateEventLoop.exit = _safe_exit
+    CocoaAlternateEventLoop._scalpel_patched = True
+
 class ScalpelVisualizer:
     """
     Class for visualizing brain surface data.
@@ -105,17 +128,20 @@ class ScalpelVisualizer:
             surface_type='inflated'
         )
     
-    def plot(self, view: str = 'lateral', labels: List[str] = None):
+    def plot(self, view: str = 'lateral', labels: List[str] = None, show: bool = True):
         """
         Plot the cortical surface, optionally with labels.
-        
+
         Parameters:
         -----------
         view : str, default='lateral'
             View angle ('lateral', 'medial', 'ventral', 'dorsal')
         labels : List[str], optional
             Names of labels to plot
-            
+        show : bool, default=True
+            Open the interactive viewer (blocks in a script). Set False to build
+            the scene without a window, e.g. before ``save_plot`` in a script.
+
         Returns:
         --------
         trimesh.Scene
@@ -123,22 +149,24 @@ class ScalpelVisualizer:
         """
         # Get or create scene
         scene = self.scene
-        
+
         # Apply the requested view
         apply_rotation(
-            scene, 
-            view=view, 
-            hemi=self._subject.hemi, 
+            scene,
+            view=view,
+            hemi=self._subject.hemi,
             reset=True
         )
-        
+
         # Add labels if specified
         if labels:
             for label_name in labels:
                 self._plot_label(label_name, view=view)
-        
-        # Show the scene
-        return scene.show()
+
+        # Show the scene (blocking) unless building it for offscreen use
+        if show:
+            return scene.show()
+        return scene
     
     def _plot_label(
         self, 
@@ -316,14 +344,15 @@ class ScalpelVisualizer:
         
         # Set camera distance
         self._scene.set_camera(distance=distance)
-        
+
         # Prepare filename
         if save_dir is not None:
             save_dir = Path(save_dir)
             save_dir.mkdir(parents=True, exist_ok=True)
             filename = save_dir / filename
-        
-        # Save image
+
+        # Save image (guard against a pyglet/macOS teardown crash in scripts)
+        _patch_pyglet_cocoa_teardown()
         data = self._scene.save_image(resolution=resolution)
         image = Image.open(io.BytesIO(data))
         image.save(filename)

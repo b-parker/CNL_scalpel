@@ -391,23 +391,26 @@ class ScalpelSubject:
     # Visualization Methods 
     ############################
     
-    def plot(self, view: str = 'lateral', labels: List[str] = None):
+    def plot(self, view: str = 'lateral', labels: List[str] = None, show: bool = True):
         """
         Plot the cortical surface, optionally with labels.
-        
+
         Parameters:
         -----------
         view : str, default='lateral'
             View angle ('lateral', 'medial', 'ventral', 'dorsal')
         labels : List[str], optional
             Names of labels to plot
-            
+        show : bool, default=True
+            Open the interactive viewer (blocks in a script). Set False to build
+            the scene without a window, e.g. before ``save_plot`` in a script.
+
         Returns:
         --------
         trimesh.Scene
             The visualized scene
         """
-        return self.plotter.plot(view=view, labels=labels)
+        return self.plotter.plot(view=view, labels=labels, show=show)
     
     def plot_label(self, label_name: str, view: str = 'lateral', label_ind=None, face_colors=None):
         """
