@@ -9,6 +9,7 @@ from scalpel.analysis.analyzer import ScalpelAnalyzer
 from scalpel.visualization.visualizer import ScalpelVisualizer
 from scalpel.measurement.measurer import ScalpelMeasurer
 from scalpel.classes.label import Label
+from scalpel.utils import surface_utils
 
 class ScalpelSubject:
     """
@@ -184,6 +185,14 @@ class ScalpelSubject:
     def sulc_vals(self):
         """Sulcal depth values from FreeSurfer .sulc file"""
         return self._load_curv_file('sulc')
+
+    @cached_property
+    def pial_lgi(self):
+        """Per-vertex local gyrification index (Schaer 2008), computed from the
+        pial and ``?h.pial-outer-smoothed`` surfaces."""
+        pial_v, pial_f = self._load_surface('pial')
+        hull_v, hull_f = self._load_surface('pial-outer-smoothed')
+        return surface_utils.compute_local_gyrification_index(pial_v, pial_f, hull_v, hull_f)
     
     @cached_property
     def curv(self):
@@ -792,7 +801,21 @@ class ScalpelSubject:
             Tuple[float, float]: Folding index and intrinsic curvature index
         """
         return self.measurer.calculate_curvature_indices(label_name=label_name)
-    
+
+    def calculate_local_gyrification_index(self, label_name: Optional[str] = None) -> float:
+        """
+        Mean local gyrification index (Schaer 2008) over a label, or the whole
+        cortex if label_name is None. Requires the pial-outer-smoothed surface.
+
+        Parameters:
+            label_name: Optional[str]
+                Name of the label. If None, averages over the cortex.
+
+        Returns:
+            float: Mean local gyrification index
+        """
+        return self.measurer.calculate_local_gyrification_index(label_name=label_name)
+
     def calculate_all_freesurfer_stats(self, label_name: str) -> Dict[str, float]:
         """
         Calculate all FreeSurfer anatomical statistics for a label.

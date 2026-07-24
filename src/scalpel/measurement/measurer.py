@@ -405,6 +405,23 @@ class ScalpelMeasurer:
         
         return folding_index, intrinsic_curvature_index
 
+    def calculate_local_gyrification_index(self, label_name: Optional[str] = None) -> float:
+        """
+        Mean local gyrification index (Schaer 2008) over a label, or the cortex if
+        label_name is None. Computed from the pial and pial-outer-smoothed surfaces.
+
+        Reference: Schaer et al. (2008), IEEE TMI 27(2):161-170.
+        """
+        lgi = self.subject.pial_lgi
+        if label_name is not None:
+            if label_name not in self.subject.labels:
+                raise ValueError(f"Label '{label_name}' not found in subject")
+            vertices = self.subject.labels[label_name].vertex_indexes
+            mean_lgi = float(np.mean(lgi[vertices]))
+            self.subject.labels[label_name].measurements['local gyrification index'] = mean_lgi
+            return mean_lgi
+        return float(np.mean(lgi[self.subject.cortex_vertices]))
+
     def calculate_all_freesurfer_stats(self, label_name: str) -> Dict[str, float]:
         """
         Calculate all FreeSurfer anatomical statistics for a label.

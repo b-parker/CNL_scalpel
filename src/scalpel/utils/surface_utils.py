@@ -655,3 +655,54 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all 
                 all_label_faces.append(face)
     return np.array(all_label_faces)
         
+
+
+def compute_local_gyrification_index(pial_vertices, pial_faces, hull_vertices, hull_faces, radius: float = 25.0):
+    """
+    Per-vertex local gyrification index (lGI), following Schaer et al. (2008).
+
+    For each hull vertex, lGI is the ratio of buried pial area to hull area within
+    a disc of the given radius; each pial vertex inherits the lGI of its nearest
+    hull vertex. Geodesic discs on the smooth hull are approximated by Euclidean
+    balls (the hull is unfolded, so the two coincide).
+
+    Reference: Schaer et al. (2008), IEEE TMI 27(2):161-170.
+    https://doi.org/10.1109/TMI.2007.903576
+
+    Parameters:
+        pial_vertices, pial_faces: pial surface geometry
+        hull_vertices, hull_faces: outer hull geometry (?h.pial-outer-smoothed)
+        radius: ROI radius in mm (default 25, matching FreeSurfer)
+
+    Returns:
+        np.ndarray: lGI value per pial vertex
+    """
+    from scipy.spatial import cKDTree
+    from sklearn.neighbors import radius_neighbors_graph
+
+    def vertex_areas(verts, faces):
+        tris = verts[faces]
+        fa = 0.5 * np.linalg.norm(np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]), axis=1)
+        va = np.zeros(len(verts))
+        for k in range(3):
+            np.add.at(va, faces[:, k], fa / 3.0)
+        return va
+
+    pial_area = vertex_areas(pial_vertices, pial_faces)
+    hull_area = vertex_areas(hull_vertices, hull_faces)
+
+    hull_tree = cKDTree(hull_vertices)
+    # attribute each pial vertex's area to its nearest hull vertex (buried area)
+    _, nearest_hull = hull_tree.query(pial_vertices)
+    buried_pial_area = np.zeros(len(hull_vertices))
+    np.add.at(buried_pial_area, nearest_hull, pial_area)
+
+    # lGI per hull vertex = buried pial area / hull area within the radius-r disc.
+    # The disc membership is a sparse radius-neighbour graph, so the per-disc
+    # area sums are two sparse matrix-vector products (no Python loop).
+    disc = radius_neighbors_graph(hull_vertices, radius, mode='connectivity', include_self=True)
+    hull_area_in_disc = disc @ hull_area
+    buried_in_disc = disc @ buried_pial_area
+    lgi_hull = np.where(hull_area_in_disc > 0, buried_in_disc / hull_area_in_disc, 1.0)
+
+    return lgi_hull[nearest_hull]
