@@ -12,6 +12,7 @@
 # Jupyter Notebooks
 .ipynb_checkpoints/
 notebooks/MRIs*
+notebooks/geodesic_path_demo.ipynb
 
 # Python
 __pycache__/
