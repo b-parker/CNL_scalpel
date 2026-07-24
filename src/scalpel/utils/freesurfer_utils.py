@@ -908,16 +908,9 @@ def freesurfer_mris_anatomical_stats(
         cmd.append('-noglobal')
     if th3:
         cmd.append('-th3')
-    if surface_name:
-        cmd.append(surface_name)
-    # Add -noglobal flag by default to avoid permission issues
-    if no_global:
-        cmd.append('-noglobal')
-    
-    # Add required positional arguments
+
+    # Required positional arguments, then the optional surface name (must come last)
     cmd.extend([subject_name, hemisphere])
-    
-    # Add optional positional argument
     if surface_name:
         cmd.append(surface_name)
     
