@@ -21,6 +21,7 @@ dependencies = [
   "networkx>=3.1",
   "seaborn>=0.13.2",
   "trimesh>=4.6.2",
+  "pygeodesic>=0.1.8",
   "cython>=3.0.12",
   "pytest>=8.3.4",
   "joblib>=1.4.2",

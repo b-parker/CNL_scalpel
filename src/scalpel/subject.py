@@ -818,7 +818,34 @@ class ScalpelSubject:
             label2=label2,
             method=method
         )
-    
+
+    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
+        """
+        Calculate the exact geodesic (on-surface) distance between two labels.
+
+        Distances are measured across the subject's loaded surface and follow
+        the folded cortical sheet, so labels on opposite banks of a sulcus are
+        not treated as close (unlike Euclidean distance). Requires the optional
+        `pygeodesic` package.
+
+        Parameters:
+            label1: str
+                Name of the first label
+            label2: str
+                Name of the second label
+            method: str
+                Method to use ('centroid' - between each label's centroid vertex;
+                'nearest' - minimum geodesic distance between the label vertex sets)
+
+        Returns:
+            float: The geodesic distance in mm
+        """
+        return self.measurer.calculate_geodesic_distance(
+            label1=label1,
+            label2=label2,
+            method=method
+        )
+
     def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:
         """
         Calculate the overlap between two labels.

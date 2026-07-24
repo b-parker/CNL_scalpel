@@ -500,14 +500,15 @@ class ScalpelMeasurer:
             raise ValueError(f"Label '{label2}' not found in subject")
         
         # Get RAS coordinates for each label
-        coords1 = self._subject.labels[label1].ras_coords
-        coords2 = self._subject.labels[label2].ras_coords
+        coords1 = self._subject.labels[label1].label_RAS
+        coords2 = self._subject.labels[label2].label_RAS
         
         if method == 'centroid':
-            # Calculate centroid for each label
-            centroid1 = np.mean(coords1, axis=0)
-            centroid2 = np.mean(coords2, axis=0)
-            
+            # Area-weighted geometric centroid of each label (falls back to the
+            # unweighted vertex mean for labels with no complete interior faces)
+            centroid1 = self._label_centroid(label1)
+            centroid2 = self._label_centroid(label2)
+
             # Calculate Euclidean distance between centroids
             distance = np.linalg.norm(centroid2 - centroid1)
         
@@ -539,9 +540,123 @@ class ScalpelMeasurer:
         
         else:
             raise ValueError("Invalid method. Choose 'centroid', 'nearest', or 'farthest'.")
-        
+
         return distance
-    
+
+    def _label_centroid(self, label_name: str) -> np.ndarray:
+        """
+        Compute the area-weighted geometric centroid of a label.
+
+        Uses the label's interior mesh faces so densely-tessellated regions do
+        not bias the result (unlike a plain vertex mean). Falls back to the
+        unweighted vertex mean when the label has no complete faces or zero area.
+
+        Parameters:
+        -----------
+        label_name: str
+            Name of the label
+
+        Returns:
+        --------
+        np.ndarray
+            (3,) array with the x, y, z coordinates of the centroid
+        """
+        label = self._subject.labels[label_name]
+        label_faces = surface_utils.get_faces_from_vertices(
+            self._subject.faces, label.vertex_indexes
+        )
+        if len(label_faces) == 0:
+            return np.mean(label.label_RAS, axis=0)
+        try:
+            return surface_utils.calculate_geometric_centroid(
+                self._subject.surface_RAS, label_faces
+            )
+        except ValueError:
+            return np.mean(label.label_RAS, axis=0)
+
+    def _get_geodesic_algorithm(self):
+        """
+        Lazily build and cache an exact geodesic solver over the subject's
+        loaded surface (subject.surface_RAS / subject.faces).
+
+        Requires the optional `pygeodesic` dependency.
+        """
+        if getattr(self, '_geoalg', None) is None:
+            try:
+                import pygeodesic.geodesic as geodesic
+            except ImportError as exc:
+                raise ImportError(
+                    "Geodesic distance requires the 'pygeodesic' package. "
+                    "Install it with `pip install pygeodesic`."
+                ) from exc
+            vertices = np.asarray(self._subject.surface_RAS, dtype=np.float64)
+            faces = np.asarray(self._subject.faces, dtype=np.int32)
+            self._geoalg = geodesic.PyGeodesicAlgorithmExact(vertices, faces)
+        return self._geoalg
+
+    def _nearest_label_vertex_to_centroid(self, label_name: str) -> int:
+        """Return the label's vertex index that is closest to its centroid."""
+        label = self._subject.labels[label_name]
+        centroid = self._label_centroid(label_name)
+        local_idx = np.argmin(np.linalg.norm(label.label_RAS - centroid, axis=1))
+        return int(label.vertex_indexes[local_idx])
+
+    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
+        """
+        Calculate the exact geodesic (on-surface) distance between two labels.
+
+        Distances are measured across the subject's loaded surface
+        (subject.surface_RAS / subject.faces) using the exact MMP algorithm from
+        the `pygeodesic` package. Unlike Euclidean distance, this follows the
+        folded cortical sheet, so labels on opposite banks of a sulcus are not
+        treated as close.
+
+        Parameters:
+        -----------
+        label1: str
+            Name of the first label
+        label2: str
+            Name of the second label
+        method: str
+            'centroid' - geodesic distance between each label's centroid vertex
+            'nearest'  - minimum geodesic distance between the two label vertex sets
+
+        Returns:
+        --------
+        float
+            The geodesic distance in mm
+        """
+        # Check if labels exist
+        if label1 not in self._subject.labels:
+            raise ValueError(f"Label '{label1}' not found in subject")
+        if label2 not in self._subject.labels:
+            raise ValueError(f"Label '{label2}' not found in subject")
+
+        geoalg = self._get_geodesic_algorithm()
+
+        if method == 'centroid':
+            # Reduce each label to the single vertex nearest its centroid, then
+            # measure the geodesic distance between that source and target.
+            source = self._nearest_label_vertex_to_centroid(label1)
+            target = self._nearest_label_vertex_to_centroid(label2)
+            distance, _ = geoalg.geodesicDistance(source, target)
+            return float(distance)
+
+        elif method == 'nearest':
+            # Single geodesic wavefront from all of label1's vertices; take the
+            # smallest distance reaching any of label2's vertices.
+            sources = np.asarray(
+                self._subject.labels[label1].vertex_indexes, dtype=np.int32
+            )
+            targets = np.asarray(
+                self._subject.labels[label2].vertex_indexes, dtype=np.int32
+            )
+            distances, _ = geoalg.geodesicDistances(sources, targets)
+            return float(np.min(distances))
+
+        else:
+            raise ValueError("Invalid method. Choose 'centroid' or 'nearest'.")
+
     def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:
         """
         Calculate the overlap between two labels using multiple metrics.
