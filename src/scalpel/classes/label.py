@@ -25,13 +25,16 @@ class Label(object):
         - ras_coords (np.array, optional): Numpy array of RAS coordinates. Defaults to None.
         - stat (np.array, optional): Numpy array of statistical values. Defaults to None.
         - custom_label_path (str, optional): Path to a custom label file. Defaults to None.
+        - read_label_stats (bool, optional): If True, lazily load a FreeSurfer stats file into
+          measurements on first access. Defaults to False.
         """
         self._label_name = name
         self._hemi = hemi
         self._subject_id = subject_id
         self._subjects_dir = subjects_dir
-        self._label_stats = None  
+        self._label_stats = None
         self._read_label_stats = read_label_stats
+        self._measurements = {}
 
         if custom_label_path:
             self._vertex_indexes, self._ras_coords, self._stat = fsu.read_label(custom_label_path, include_stat=True)
@@ -87,9 +90,9 @@ class Label(object):
         """
         if self._label_stats is None and self._read_label_stats:
             self.load_stats()
-        
-        return self._label_stats.measurements if self._label_stats else {}
-    
+
+        return self._measurements
+
     @property
     def faces(self) -> np.array:
         if not hasattr(self, '_subject'):
@@ -105,7 +108,7 @@ class Label(object):
     
     @cached_property
     def mesh(self) -> tm.Trimesh:
-        return tm.Trimesh(vertices=self.subject.ras_coords, faces=self.faces)
+        return tm.Trimesh(vertices=self.subject.surface_RAS, faces=self.faces)
     
     @cached_property
     def curv(self) -> np.array:
@@ -192,9 +195,10 @@ class Label(object):
             Dictionary containing the parsed statistics
         """
         from scalpel.classes.label_stats import LabelStats
-        
+
         self._label_stats = LabelStats(self, stats_filepath)
-        return self._label_stats.measurements
+        self._measurements.update(self._label_stats.measurements)
+        return self._measurements
     
     def get_measurement(self, key: str) -> Any:
         """
@@ -212,5 +216,17 @@ class Label(object):
         """
         if self._label_stats is None and self._read_label_stats:
             self.load_stats()
+
+        return self._measurements.get(key)
+    
+    def __str__(self):
+        label_summary = f"Subject ID: {self._subject_id}\n"
+        label_summary += f"Label Name: {self._label_name}\n"
+        label_summary += f"Hemisphere: {self.hemi}\n"
+        label_summary += f"Number of Vertices: {len(self._vertex_indexes):,}\n"
         
-        return self._label_stats.get_measurement(key) if self._label_stats else None
+            
+        return label_summary
+    
+    def __repr__(self):
+        return f"<Subject id= {self._subject_id} Label name={self._label_name} hemi={self.hemi} vertices={len(self._vertex_indexes):,}>"

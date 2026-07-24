@@ -3,13 +3,13 @@ from typing import Union, List, Tuple, Optional, Dict
 from functools import cached_property
 import nibabel as nib
 import numpy as np
-from collections import defaultdict
 
 # Import the modules we need
 from scalpel.analysis.analyzer import ScalpelAnalyzer
 from scalpel.visualization.visualizer import ScalpelVisualizer
 from scalpel.measurement.measurer import ScalpelMeasurer
 from scalpel.classes.label import Label
+from scalpel.utils import surface_utils
 
 class ScalpelSubject:
     """
@@ -42,7 +42,7 @@ class ScalpelSubject:
         self._surface_type = surface_type
         self._subjects_dir = subjects_dir if isinstance(subjects_dir, Path) else Path(subjects_dir)
         self._subject_fs_path = self._subjects_dir / subject_id
-        self._labels = defaultdict(list)
+        self._labels = {}
         
         # Validate that the subject directory exists
         assert self.subject_fs_path.exists(), f"Subject path does not exist at {self.subject_fs_path}"
@@ -110,7 +110,7 @@ class ScalpelSubject:
         Access loaded labels through dictionary
     
         sub.labels['label_name'].vertex_indexes  # Vertex indexes
-        sub.labels['label_name'].ras_coords      # RAS coordinates
+        sub.labels['label_name'].label_RAS       # RAS coordinates
         """
         return self._labels
     
@@ -136,14 +136,18 @@ class ScalpelSubject:
     
     @cached_property
     def gyrif_v(self):
-        """Gyral-inflated surface vertices (requires recon-all -all)"""
-        try:
-            gyrif_surface = self._load_surface('inflated')  # or 'sphere.reg' depending on your setup
-            return gyrif_surface[0]  # vertices
-        except FileNotFoundError:
-            print(f"Warning: Gyral-inflated surface not found for {self._hemi}. Using inflated surface.")
-            return self.surface_RAS
-    
+        """Gyral hull vertices from ``?h.pial-outer-smoothed`` (pial frame; for sulcal depth)."""
+        gyrif_surface = self._load_surface('pial-outer-smoothed')
+        return gyrif_surface[0]  # vertices
+
+    @cached_property
+    def cortex_vertices(self):
+        """Cortex-label vertex indices (``?h.cortex.label``), excluding the medial wall."""
+        cortex_path = self._subject_fs_path / 'label' / f'{self._hemi}.cortex.label'
+        if not cortex_path.exists():
+            raise FileNotFoundError(f"Cortex label not found: {cortex_path}")
+        return nib.freesurfer.read_label(str(cortex_path))
+
     # Curvature and morphometric data loading
     def _load_curv_file(self, curv_name: str):
         """Load a curvature file"""
@@ -159,13 +163,19 @@ class ScalpelSubject:
     
     @cached_property
     def gaussian_curvature(self):
-        """Gaussian curvature values"""
-        try:
-            return self._load_curv_file('curv.K')
-        except FileNotFoundError:
-            print(f"Warning: Gaussian curvature file not found for {self._hemi}")
-            return np.zeros(len(self.surface_RAS))
-    
+        """Gaussian curvature from ``?h.curv.K`` (generate with ``mris_curvature -k``)."""
+        return self._load_curv_file('curv.K')
+
+    @cached_property
+    def k1_curvature(self):
+        """Max principal curvature from ``?h.white.max`` (``mris_curvature -max``)."""
+        return self._load_curv_file('white.max')
+
+    @cached_property
+    def k2_curvature(self):
+        """Min principal curvature from ``?h.white.min`` (``mris_curvature -min``)."""
+        return self._load_curv_file('white.min')
+
     @cached_property
     def thickness(self):
         """Cortical thickness values from FreeSurfer .thickness file"""
@@ -175,6 +185,14 @@ class ScalpelSubject:
     def sulc_vals(self):
         """Sulcal depth values from FreeSurfer .sulc file"""
         return self._load_curv_file('sulc')
+
+    @cached_property
+    def pial_lgi(self):
+        """Per-vertex local gyrification index (Schaer 2008), computed from the
+        pial and ``?h.pial-outer-smoothed`` surfaces."""
+        pial_v, pial_f = self._load_surface('pial')
+        hull_v, hull_f = self._load_surface('pial-outer-smoothed')
+        return surface_utils.compute_local_gyrification_index(pial_v, pial_f, hull_v, hull_f)
     
     @cached_property
     def curv(self):
@@ -659,7 +677,7 @@ class ScalpelSubject:
         Parameters:
             label_name (str): Name of the label, or 'cortex' to use the entire brain.
             threshold_type (str): Type of threshold - 'absolute' or 'percentile'.
-            direction (str): Direction of thresholding - '>', '>=', '<', or '<='.
+            threshold_direction (str): Direction of thresholding - '>', '>=', '<', or '<='.
             threshold_value (float): Value to threshold at (absolute value or percentile).
             threshold_measure (str): Measure to threshold on - 'sulc', 'thickness', 'curv', or 'label_stat'.
             load_label (bool): If True, load the thresholded result as a new label.
@@ -783,7 +801,21 @@ class ScalpelSubject:
             Tuple[float, float]: Folding index and intrinsic curvature index
         """
         return self.measurer.calculate_curvature_indices(label_name=label_name)
-    
+
+    def calculate_local_gyrification_index(self, label_name: Optional[str] = None) -> float:
+        """
+        Mean local gyrification index (Schaer 2008) over a label, or the whole
+        cortex if label_name is None. Requires the pial-outer-smoothed surface.
+
+        Parameters:
+            label_name: Optional[str]
+                Name of the label. If None, averages over the cortex.
+
+        Returns:
+            float: Mean local gyrification index
+        """
+        return self.measurer.calculate_local_gyrification_index(label_name=label_name)
+
     def calculate_all_freesurfer_stats(self, label_name: str) -> Dict[str, float]:
         """
         Calculate all FreeSurfer anatomical statistics for a label.
@@ -818,7 +850,30 @@ class ScalpelSubject:
             label2=label2,
             method=method
         )
-    
+
+    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
+        """
+        Exact geodesic (on-surface) distance between two labels, on the subject's
+        loaded surface. Requires the optional `pygeodesic` package.
+
+        Parameters:
+            label1: str
+                Name of the first label
+            label2: str
+                Name of the second label
+            method: str
+                'centroid' (between each label's centroid vertex) or
+                'nearest' (minimum geodesic distance between the label vertex sets)
+
+        Returns:
+            float: The geodesic distance in mm
+        """
+        return self.measurer.calculate_geodesic_distance(
+            label1=label1,
+            label2=label2,
+            method=method
+        )
+
     def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:
         """
         Calculate the overlap between two labels.
