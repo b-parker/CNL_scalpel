@@ -38,8 +38,13 @@ class ScalpelMeasurer:
 
     def calculate_sulcal_depth(self, label_name, depth_pct=8, n_deepest=100, use_n_deepest=True):
         """
-        Calculate the depth of a sulcus matching the MATLAB calcSulc_depth function.
-        
+        Sulcal depth following Madan (2019) calcSulc: the median distance from the
+        deepest sulcal (pial) vertices to the nearest point on the
+        ``pial-outer-smoothed`` gyral hull.
+
+        Reference: Madan (2019), Brain Informatics 6:5.
+        https://doi.org/10.1186/s40708-019-0098-1 -- https://github.com/cMadan/calcSulc
+
         Parameters:
         -----------
         label_name: str
@@ -55,7 +60,7 @@ class ScalpelMeasurer:
         --------
         float: The median depth of the sulcus in mm
 
-        NOTE: Requires the pial and gyral-inflated surfaces to be generated with recon-all -all
+        NOTE: Requires the pial and pial-outer-smoothed surfaces (recon-all -localGI).
         """
         try:
             if label_name not in self.subject.labels:
@@ -85,14 +90,10 @@ class ScalpelMeasurer:
             fundus_indices = sorted_indices[-num_fundus:]
             fundus_vertices = label_vertices[fundus_indices]
                 
-            # Calculate distances from pial to gyral-inflated surface
             depths = []
             for vertex_idx in fundus_vertices:
-                # Get coordinates of the vertex on the pial surface
+                # min distance from this pial fundus vertex to the gyral hull
                 v_xyz = self.subject.pial_v[vertex_idx]
-                    
-                # Calculate distances to all gyral-inflated vertices
-                # NOTE: The gyral-inflated surface is generated with recon-all flag -all
                 distances = np.sqrt(np.sum((self.subject.gyrif_v - v_xyz)**2, axis=1))
                     
                 # Find minimum distance
