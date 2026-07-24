@@ -27,10 +27,6 @@ import networkx as nx
 from scalpel.utils.freesurfer_utils import *
 
 
-
-
-
-
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
@@ -42,8 +38,6 @@ from scalpel.utils.freesurfer_utils import *
 ##########################################################################################################
 ############################################################################################################
 ############################################################################################################
-
-
 
 
 # NOTE: had trouble with numba format and jit in surfdist, so some functions are copied over with slight modifications below
@@ -89,51 +83,6 @@ def surf_keep_cortex(surf, cortex):
     return cortex_vertices, cortex_triangles
 
 
-def dist_calc_matrix(surf, cortex, label_inds_all):
-    cortex_vertices, cortex_triangles = surf_keep_cortex(surf, cortex)
-    
-    n_labels = len(labels)
- 
-    dist_mat = np.zeros((n_labels,n_labels))
-
-    
-    for r1 in np.arange(n_labels):
-        #print('r1',r1,label_inds_all[r1])
-        for r2 in np.arange(n_labels):
-            # print('r2',r2,label_inds_all[r2])
-            # val1 = gdist.compute_gdist(cortex_vertices, cortex_triangles,
-            #                                source_indices = array(label_inds_all[r1]))
-            # print('val1',val1)
-            # Uncomment next three lines for Suvi original gdist code
-            print('Label inds r1:', label_inds_all[r1])
-            
-            # val2 = gdist.compute_gdist(cortex_vertices, cortex_triangles,
-            #                                 source_indices = array(label_inds_all[r1]),
-            #                                 target_indices = array(label_inds_all[r2]))
-            
-            
-            #
-            #
-            ## TODO in order for this to work we need to select single index for the source and target
-            ## Options: take center, take nearest
-
-            val2 = geodesic.PyGeodesicAlgorithmExact(cortex_vertices, cortex_triangles)
-            source_indices = find_centroid(cortex_vertices[label_inds_all[r1]])
-            target_indices = find_centroid(cortex_vertices[label_inds_all[r2]])
-
-            ## .geodesicDistances(array) gets distance amoung all indices provided in array
-            ## .geodesicDistance(source, target) requires using single source index and single target index
-
-            val2_distance, val2_path = val2.geodesicDistance(source_indices, target_indices)
-            # val2_distance, val2_path = val2.geodesicDistances(label_inds_all[r1])
-
-            #print('val2',val2)
-            dist_mat[r1,r2] = amin(val2) #UNCOMMENT for original code
-            # dist_mat[r1,r2] = amin(val2_distance)
-
-    return dist_mat
-
-
 def getLabelIndices(sub,hemi,labels,cortex, subjects_dir):
     label_inds_all = []
     
@@ -160,42 +109,6 @@ def getLabelIndices(sub,hemi,labels,cortex, subjects_dir):
     return label_inds_all
 
 
-def getDistMatrix(subjects_dir=str, labels=list, sub=str, hemi=str, savedir=str, fmri_prep=False):
-    """
-    Outputs geodesic distances among all labels for a given sub/hemi
-    """
-    if fmri_prep == True:
-        highres_surface = '%s/sub-%s/ses-%s/anat/sub-%s_ses-%s_hemi-%s_midthickness.surf.gii'%(subjects_dir,sub,sub[-1],sub,sub[-1],hemi[0].upper())
-    if fmri_prep == False:
-        highres_surface = f'{subjects_dir}/{sub}/surf/{hemi}.pial'
-    
- 
-    giidata = nb.freesurfer.read_geometry(highres_surface)
-
-   
-    # giidata2 = np.squeeze(np.asarray([x for x in giidata])) 
-    surf = (giidata[0],giidata[1])  
-
-    
-    if fmri_prep == True:
-        cort_file = '%s/sub-%s/label/%s.cortex.label'%(os.environ['SUBJECTS_DIR'],sub,hemi)
-    if fmri_prep == False:
-       cort_file = f'{subjects_dir}/{sub}/label/{hemi}.cortex.label'
-    
-    cortex = sort(nb.freesurfer.read_label(cort_file))
-
-    
-    label_inds_all = getLabelIndices(sub,hemi,labels,cortex, subjects_dir)
-
-    dist_matrix = dist_calc_matrix(surf,cortex,label_inds_all)
-   
-
-    savetxt('%s/adj-labels-%s.txt'%(savedir,hemi),dist_matrix)
-
-
-
-
-
 def find_label_boundary_vertices(label_faces):
     """
     Find the boundary edges of a label
@@ -214,7 +127,6 @@ def find_label_boundary_vertices(label_faces):
     boundary_edges = [edge for edge, count in edges.items() if count == 1]
 
     return np.unique(boundary_edges)
-
 
 
 ############################################################################################################
@@ -310,144 +222,6 @@ def find_endpoint_vertices(path: list, graph: nx.Graph):
     return edge
 
 
-
-def find_vert_inside(adjacency_matrix: np.array, vert : int, all_verts : np.array, label_verts : np.array, direction : str = 'anterior'):
-        """ 
-        Finds the first vertex on a graph inside of a boundary, according to a direction. 
-        i.e. 'anterior' will find the first anterior vertex inside the <vert> given
-
-        INPUT:
-        adjacency_matrix: np.array - adjacency matrix of a mesh provided by mesh_to_adjacency()
-        vert: int - index of vertex to find adjacent nodes
-        all_verts: np.array - array of all vertices in mesh
-        label_verts: np.array - array of vertices in boundary
-        direction: str - direction to search for first point inside boundary
-
-        OUTPUT:
-        first_vert_index: int - index of first vert inside boundary
-        """
-
-        ## Recursively check for first point anterior to boundary
-        adjacent_points = adjacent_nodes(adjacency_matrix, vert)
-
-        if direction == 'anterior':
-            dir_idx = 1
-            dir_function = np.min
-        if direction == 'posterior':
-            dir_idx = 1
-            dir_function = np.max
-        if direction == 'inferior':
-            dir_idx = 2
-            dir_function = np.min
-        if direction == 'superior':
-            dir_idx = 2
-            dir_function = np.max                  
-        all_verts_in_direction = np.array([vert_i for vert_i in np.take(all_verts, adjacent_points, axis=0)[dir_idx]]).flatten()
-        first_point = dir_function(all_verts_in_direction)
-        if first_point in label_verts:
-            find_vert_inside(first_point)
-        else:
-            ## Base 
-            ### Return index and value
-            first_vert_index = np.where(all_verts[:, dir_idx] == first_point)[0][0] 
-            return first_vert_index 
-        
-  
-  
-def find_edge_vert(label_RAS: np.array, label_ind: np.array, direction: str, hemi: str):
-    """
-    Finds the vertex on the boundary edge in a given direction
-
-    INPUT:
-    label_verts: np.array - array of vertices in boundary
-    direction: str - direction to search for first point inside boundary
-
-    OUTPUT:
-    first_vert_index: int - index of first vert inside boundary
-    """
-    if direction == 'anterior':
-        dir_idx = 1
-        dir_function = np.max
-    elif direction == 'posterior':
-        dir_idx = 1
-        dir_function = np.min
-    elif direction == 'inferior':
-        dir_idx = 2
-        dir_function = np.min
-    elif direction == 'superior':
-        dir_idx = 2
-        dir_function = np.max
-    elif direction == 'medial' and hemi == 'lh':
-        dir_idx = 0
-        dir_function = np.max
-    elif direction == 'lateral' and hemi == 'lh':
-        dir_idx = 0
-        dir_function = np.min
-    elif direction == 'medial' and hemi == 'rh':
-        dir_idx = 0
-        dir_function = np.min
-    elif direction == 'later' and hemi == 'rh':
-        dir_idx = 0
-        dir_function = np.max
-
-    first_point = dir_function(label_RAS[:, dir_idx])
-    first_RAS = label_RAS[np.where(label_RAS[:, dir_idx] == first_point)]
-    first_vert_index = label_ind[np.where(label_RAS[:, dir_idx] == first_point)]
-
-    return np.array(first_vert_index), np.array(first_RAS)
-
-
-def get_vertices_in_bounded_area(all_faces, all_points, boundary_faces):
-    """
-    For a list of boundary faces, start at the most posterior node (node 1)
-
-    find all adjacent faces, and select the faces with the most anterior node (node 2)
-
-    Using the faces defined by node 1 and node 2, breadth first search until you encounter boundary faces and there are no more unvisited nodes
-
-    INPUT:
-    all_faces: np.array - array of faces in mesh
-    all_points: np.array - array of points in mesh
-    boundary_verts: np.array - array of boundary vertex indices
-
-    OUTPUT:
-    label_points: np.array - array of points in bounded area
-
-    """
-    # Get all points in boundary
-    label_points = np.unique(boundary_faces)
-
-    # Calculate adjacency matrix for traversal
-    adj_mat = mesh_to_adjacency(all_faces, all_points)
-    
-    # return the index of the most posterior point in the boundary (idx in all_points)
-    all_boundary_points = all_points[label_points]
-    boundary_index = find_edge_vert(all_boundary_points, 'posterior')
-            
-    first_anterior_vertex = find_vert_inside(adjacency_matrix=adj_mat,
-                                            vert=boundary_index,
-                                            all_verts=all_points,
-                                            label_verts=label_points,
-                                            direction='anterior')
-
-    # breadth first search from first anterior point, treating boundary points as end of the graph
-    queue = [first_anterior_vertex]
-
-    while queue:
-        visited = label_points
-        vertex = queue.pop(0)
-        if vertex not in label_points:
-            ## Seems infinite
-            ## Not adding any points
-            np.append(label_points, vertex)
-            for adj in adjacent_nodes(adj_mat, vertex):
-                if adj not in visited:
-                    queue.append(adj)
-                    np.append(visited, adj)
-    
-    return label_points
-
-
 def get_label_subsets(label_faces: np.array, all_faces: np.array) -> list:
     """
     Get the disjoint sets of a label
@@ -515,66 +289,6 @@ def find_shortest_path_in_mesh(faces, source_index, target_index):
     path = nx.shortest_path(G, source=source_index, target=target_index)
 
     return path
-
-
-def find_closest_vertices(boundary1: np.array, boundary2: np.array, points, faces, num_vertices: float = .1, path_length: bool = True):
-    """
-    Find the num vertices closest vertices for boundary1 and boundary2
-
-    INPUT:
-    boundary1: np.array - array of boundary vertices
-    boundary2: np.array - array of boundary vertices
-    points: np.array - array of points in mesh
-    faces: np.array - array of faces in mesh
-    num_vertices: float - percentage of each boundary to return
-    path_length: bool - if True, use path length instead of euclidean distance
-    
-    OUTPUT:
-    closest_vertices: np.array - array of closest vertices
-    """
-    if path_length:
-        boundary1_closest = []
-        boundary2_closest = []
-        boundary1 = boundary1[::20]
-        boundary2 = boundary2[::10]
-        for i in range(len(boundary1)):
-            for j in range(len(boundary2)):
-                print(str(i) + f"/ {str(len(boundary1))}"), print( str(j)+ f"/ {str(len(boundary2))}")
-                path = find_shortest_path_in_mesh(points, faces, boundary1[i], boundary2[j])
-                boundary1_closest.append(path[0])
-                boundary2_closest.append(path[-1])
-        ## sort boundary1_closest and boundary2_closest by the path length
-        boundary1_closest = np.array(boundary1_closest)
-        boundary2_closest = np.array(boundary2_closest)
-        boundary1_closest = boundary1_closest[np.argsort(boundary1_closest[:,1])]
-        boundary2_closest = boundary2_closest[np.argsort(boundary2_closest[:,1])]
-
-        ## return the len(boundary1) * num_vertices closest vertices and len(boundary2) * num_vertices closest vertices
-        boundary1_closest = boundary1_closest[:int(len(boundary1) * num_vertices)]
-        boundary2_closest = boundary2_closest[:int(len(boundary2) * num_vertices)]
-        return boundary1_closest, boundary2_closest
-    
-    else:
-        boundary1_closest = []
-        boundary2_closest = []
-        for i in range(len(boundary1)):
-            for j in range(len(boundary2)):
-                dist = np.linalg.norm(points[boundary1[i]] - points[boundary2[j]])
-                boundary1_closest.append(dist)
-                boundary2_closest.append(dist)
-        ## sort boundary1_closest and boundary2_closest by the path length
-        boundary1_closest = np.array(boundary1_closest)
-        boundary2_closest = np.array(boundary2_closest)
-        boundary1_closest = boundary1_closest[np.argsort(boundary1_closest[:,1])]
-        boundary2_closest = boundary2_closest[np.argsort(boundary2_closest[:,1])]
-
-        ## return the len(boundary1) * num_vertices closest vertices and len(boundary2) * num_vertices closest vertices
-        boundary1_closest = boundary1_closest[:int(len(boundary1) * num_vertices)]
-        boundary2_closest = boundary2_closest[:int(len(boundary2) * num_vertices)]
-        return boundary1_closest, boundary2_closest
-    
-
-
 
 
 ############################################################################################################
@@ -728,7 +442,6 @@ def find_closest_clusters(label_1_RAS, label_1_ind, label_2_RAS, label_2_ind, la
     return closest_clusters[:num_clusters]
 
 
-
 def plot_label_clusters(label_ind, clusters, subjects_dir, sub, hemi):
     """ 
     Plot the clustered label_RAS by cluster in interactive 3D
@@ -752,7 +465,6 @@ def plot_label_clusters(label_ind, clusters, subjects_dir, sub, hemi):
     ax.scatter(inflated_RAS[:, 0], inflated_RAS[:, 1], inflated_RAS[:, 2], c=clusters, cmap='tab20')
 
     plt.show()
-
 
 
 def find_adjacent_indices(label_ind, faces):
@@ -796,30 +508,7 @@ def combine_labels(subject: "ScalpelSubject", labels: List[str], save_to_subject
     return combined_label_ind, combined_label_RAS
 
 ### PCA
-def pca_label(subject: "ScalpelSubject", labels: List[str], n_components: int = 2):
-    ## PCA on these labels
-    # Step 1: Standardize the data
-    scaler = StandardScaler()
-    label_12_faces = get_faces_from_vertices(subject.faces, subject.labels[combined_label][0])
-    label_12_boundary = find_label_boundary(label_12_faces)
-    label_12_boundary_RAS = subject.ras_coords[label_12_boundary]
-    points_scaled = scaler.fit_transform(label_12_boundary_RAS)
 
-    # Step 2: Apply PCA
-    pca = PCA(n_components=2)  
-    points_pca = pca.fit_transform(points_scaled)
-
-    points_for_clustering = points_pca[:, 0].reshape(-1, 1)
-    label1_points = points_for_clustering[np.isin(label_12_boundary, subject.labels['IPS'][0])]
-    label2_points = points_for_clustering[np.isin(label_12_boundary, subject.labels['combined_i'][0])]
-
-    Ag_clust_1 = AgglomerativeClustering(n_clusters=2).fit_predict(label1_points)
-    Ag_clust_2 = AgglomerativeClustering(n_clusters=3).fit_predict(label2_points)
-    clusters2_adjusted = Ag_clust_2 + 5
-    Ag_clust_3 = AgglomerativeClustering(n_clusters=5).fit_predict(points_for_clustering)
-
-
-    
 
 ############################################################################################################
 ############################################################################################################
@@ -966,10 +655,3 @@ def get_faces_from_vertices(faces : np.array, label_ind : np.array, include_all 
                 all_label_faces.append(face)
     return np.array(all_label_faces)
         
-
-
-    
-    
-
-        
-
