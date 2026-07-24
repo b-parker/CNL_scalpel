@@ -682,7 +682,7 @@ class ScalpelAnalyzer:
         Parameters:
             label_name (str): Name of the label, or 'cortex' to use the entire brain.
             threshold_type (str): Type of threshold - 'absolute' or 'percentile'.
-            threshold_threshold_direction (str): Direction of thresholding - '>', '>=', '<', or '<='.
+            threshold_direction (str): Direction of thresholding - '>', '>=', '<', or '<='.
             threshold_value (float): Value to threshold at (absolute value or percentile).
             threshold_measure (str): Measure to threshold on - 'sulc', 'thickness', 'curv', or 'label_stat'.
             load_label (bool): If True, load the thresholded result as a new label.
