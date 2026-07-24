@@ -719,7 +719,7 @@ class ScalpelAnalyzer:
             # Get the label
             label = self._subject.labels[label_name]
             all_vertices = label.vertex_indexes
-            all_ras = label.ras_coords
+            all_ras = label.label_RAS
             
             # Determine the measurement values to use for thresholding
             if threshold_measure == 'label_stat':

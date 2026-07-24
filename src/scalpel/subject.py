@@ -3,7 +3,6 @@ from typing import Union, List, Tuple, Optional, Dict
 from functools import cached_property
 import nibabel as nib
 import numpy as np
-from collections import defaultdict
 
 # Import the modules we need
 from scalpel.analysis.analyzer import ScalpelAnalyzer
@@ -42,7 +41,7 @@ class ScalpelSubject:
         self._surface_type = surface_type
         self._subjects_dir = subjects_dir if isinstance(subjects_dir, Path) else Path(subjects_dir)
         self._subject_fs_path = self._subjects_dir / subject_id
-        self._labels = defaultdict(list)
+        self._labels = {}
         
         # Validate that the subject directory exists
         assert self.subject_fs_path.exists(), f"Subject path does not exist at {self.subject_fs_path}"
