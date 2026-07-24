@@ -229,10 +229,8 @@ class ScalpelMeasurer:
         pial = self.subject.pial_v
         faces = self.subject.faces
 
-        # Exact per-face gray matter volume, replicating FreeSurfer's MRISvolumeTH3:
-        # the solid between each white and pial triangle is split into 3 tetrahedra
-        # (pial vertex 0 as the common origin) and summed as |scalar triple product| / 6.
-        # Validated on fsaverage lh: 173267.5 vs FreeSurfer 173267 (face volume).
+        # Per-face volume (FreeSurfer MRISvolumeTH3): each white->pial prism split
+        # into 3 tetrahedra, summed as |scalar triple product| / 6.
         Pa, Pb, Pc = pial[faces[:, 0]], pial[faces[:, 1]], pial[faces[:, 2]]
         Wa, Wb, Wc = white[faces[:, 0]], white[faces[:, 1]], white[faces[:, 2]]
         Bp, Cp = Pb - Pa, Pc - Pa
@@ -242,8 +240,7 @@ class ScalpelMeasurer:
         T3 = np.abs(np.einsum('ij,ij->i', Cp, np.cross(Cw, Bw)))
         face_volumes = (T1 + T2 + T3) / 6.0
 
-        # Distribute 1/3 of each face's volume to each of its 3 vertices, then sum
-        # over the target vertex set (FreeSurfer's "vertex volume").
+        # 1/3 of each face's volume to each vertex (FreeSurfer "vertex volume").
         vertex_volumes = np.zeros(len(white))
         for col in range(3):
             np.add.at(vertex_volumes, faces[:, col], face_volumes / 3.0)
@@ -253,8 +250,7 @@ class ScalpelMeasurer:
                 raise ValueError(f"Label '{label_name}' not found in subject")
             target_vertices = self.subject.labels[label_name].vertex_indexes
         else:
-            # FreeSurfer masks the whole-hemisphere volume to the cortex label
-            # (excludes the medial wall). Validated: 167858.7 vs FreeSurfer 167859.
+            # FreeSurfer masks the whole-hemisphere volume to cortex (no medial wall).
             target_vertices = self.subject.cortex_vertices
 
         total_volume = float(np.sum(vertex_volumes[target_vertices]))
@@ -343,10 +339,8 @@ class ScalpelMeasurer:
             label_curvature = curvature_vals[label_vertices]
             label_areas = vertex_areas[label_vertices]
             
-            # Integrated rectified curvature, matching FreeSurfer mris_anatomical_stats:
-            # area-weighted |curvature| summed over the label, divided by vertex count.
-            # Validated against fsaverage lh: 0.049 vs FreeSurfer 0.049 (mean),
-            # 0.0065 vs 0.006 (Gaussian).
+            # FreeSurfer's integrated rectified curvature: area-weighted |curvature|
+            # summed over the label, divided by vertex count.
             integrated_curvature = (np.sum(np.abs(label_curvature) * label_areas) / len(label_vertices)
                                     if len(label_vertices) > 0 else 0.0)
 
@@ -376,10 +370,6 @@ class ScalpelMeasurer:
         Tuple[float, float]
             Folding index and intrinsic curvature index
         """
-        # Read FreeSurfer's principal curvatures directly (?h.white.max / .min)
-        # rather than reconstructing them from mean/Gaussian curvature, so the
-        # folding index matches mris_anatomical_stats. Validated on fsaverage lh:
-        # folding index 459.0 vs 459, intrinsic curvature index 46.26 vs 46.3.
         k1 = self.subject.k1_curvature
         k2 = self.subject.k2_curvature
         vertices = self.subject.white_v
@@ -401,12 +391,10 @@ class ScalpelMeasurer:
 
         abs_k1, abs_k2 = np.abs(k1), np.abs(k2)
 
-        # Folding index (FreeSurfer MRIScomputeCurvatureIndices):
-        #   (1 / 4pi) * integral |k1| * (|k1| - |k2|) dA
+        # Folding index: (1/4pi) * integral |k1|*(|k1|-|k2|) dA
         folding_index = np.sum(abs_k1 * (abs_k1 - abs_k2) * label_areas) / (4.0 * np.pi)
 
-        # Intrinsic curvature index: (1 / 4pi) * integral of positive Gaussian
-        # curvature (K = k1 * k2) dA
+        # Intrinsic curvature index: (1/4pi) * integral of positive Gaussian (k1*k2) dA
         gaussian = k1 * k2
         intrinsic_curvature_index = np.sum(np.maximum(gaussian, 0.0) * label_areas) / (4.0 * np.pi)
         
@@ -535,23 +523,7 @@ class ScalpelMeasurer:
         return distance
 
     def _label_centroid(self, label_name: str) -> np.ndarray:
-        """
-        Compute the area-weighted geometric centroid of a label.
-
-        Uses the label's interior mesh faces so densely-tessellated regions do
-        not bias the result (unlike a plain vertex mean). Falls back to the
-        unweighted vertex mean when the label has no complete faces or zero area.
-
-        Parameters:
-        -----------
-        label_name: str
-            Name of the label
-
-        Returns:
-        --------
-        np.ndarray
-            (3,) array with the x, y, z coordinates of the centroid
-        """
+        """Area-weighted geometric centroid of a label (vertex-mean fallback if no faces)."""
         label = self._subject.labels[label_name]
         label_faces = surface_utils.get_faces_from_vertices(
             self._subject.faces, label.vertex_indexes
@@ -566,12 +538,7 @@ class ScalpelMeasurer:
             return np.mean(label.label_RAS, axis=0)
 
     def _get_geodesic_algorithm(self):
-        """
-        Lazily build and cache an exact geodesic solver over the subject's
-        loaded surface (subject.surface_RAS / subject.faces).
-
-        Requires the optional `pygeodesic` dependency.
-        """
+        """Lazily build and cache an exact geodesic solver over the loaded surface."""
         if getattr(self, '_geoalg', None) is None:
             try:
                 import pygeodesic.geodesic as geodesic
@@ -594,13 +561,8 @@ class ScalpelMeasurer:
 
     def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
         """
-        Calculate the exact geodesic (on-surface) distance between two labels.
-
-        Distances are measured across the subject's loaded surface
-        (subject.surface_RAS / subject.faces) using the exact MMP algorithm from
-        the `pygeodesic` package. Unlike Euclidean distance, this follows the
-        folded cortical sheet, so labels on opposite banks of a sulcus are not
-        treated as close.
+        Exact geodesic (on-surface) distance between two labels, measured across
+        the subject's loaded surface via the MMP algorithm (`pygeodesic`).
 
         Parameters:
         -----------
@@ -617,7 +579,6 @@ class ScalpelMeasurer:
         float
             The geodesic distance in mm
         """
-        # Check if labels exist
         if label1 not in self._subject.labels:
             raise ValueError(f"Label '{label1}' not found in subject")
         if label2 not in self._subject.labels:
@@ -626,16 +587,13 @@ class ScalpelMeasurer:
         geoalg = self._get_geodesic_algorithm()
 
         if method == 'centroid':
-            # Reduce each label to the single vertex nearest its centroid, then
-            # measure the geodesic distance between that source and target.
             source = self._nearest_label_vertex_to_centroid(label1)
             target = self._nearest_label_vertex_to_centroid(label2)
             distance, _ = geoalg.geodesicDistance(source, target)
             return float(distance)
 
         elif method == 'nearest':
-            # Single geodesic wavefront from all of label1's vertices; take the
-            # smallest distance reaching any of label2's vertices.
+            # min geodesic distance between the two label vertex sets (one wavefront)
             sources = np.asarray(
                 self._subject.labels[label1].vertex_indexes, dtype=np.int32
             )
