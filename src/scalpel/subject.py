@@ -851,7 +851,8 @@ class ScalpelSubject:
             method=method
         )
 
-    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
+    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid',
+                                    cortex_only: bool = True) -> float:
         """
         Exact geodesic (on-surface) distance between two labels, on the subject's
         loaded surface. Requires the optional `pygeodesic` package.
@@ -864,6 +865,9 @@ class ScalpelSubject:
             method: str
                 'centroid' (between each label's centroid vertex) or
                 'nearest' (minimum geodesic distance between the label vertex sets)
+            cortex_only: bool
+                Restrict to the cortex mesh (default True); set False to allow
+                paths across the medial wall.
 
         Returns:
             float: The geodesic distance in mm
@@ -871,7 +875,36 @@ class ScalpelSubject:
         return self.measurer.calculate_geodesic_distance(
             label1=label1,
             label2=label2,
-            method=method
+            method=method,
+            cortex_only=cortex_only
+        )
+
+    def calculate_geodesic_path(self, label1: str, label2: str, method: str = 'centroid',
+                                cortex_only: bool = True):
+        """
+        Ordered surface-vertex indices of the geodesic path between two labels,
+        plus its length in mm. Requires the optional `pygeodesic` package.
+
+        Parameters:
+            label1: str
+                Name of the first label
+            label2: str
+                Name of the second label
+            method: str
+                'centroid' (path between centroid vertices) or
+                'nearest' (path between the closest pair of label vertices)
+            cortex_only: bool
+                Restrict to the cortex mesh (default True); set False to allow
+                the path across the medial wall.
+
+        Returns:
+            Tuple[np.ndarray, float]: Ordered path vertex indices and length in mm
+        """
+        return self.measurer.calculate_geodesic_path(
+            label1=label1,
+            label2=label2,
+            method=method,
+            cortex_only=cortex_only
         )
 
     def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:

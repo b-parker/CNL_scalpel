@@ -553,20 +553,35 @@ class ScalpelMeasurer:
         except ValueError:
             return np.mean(label.label_RAS, axis=0)
 
-    def _get_geodesic_algorithm(self):
-        """Lazily build and cache an exact geodesic solver over the loaded surface."""
-        if getattr(self, '_geoalg', None) is None:
-            try:
-                import pygeodesic.geodesic as geodesic
-            except ImportError as exc:
-                raise ImportError(
-                    "Geodesic distance requires the 'pygeodesic' package. "
-                    "Install it with `pip install pygeodesic`."
-                ) from exc
-            vertices = np.asarray(self._subject.surface_RAS, dtype=np.float64)
-            faces = np.asarray(self._subject.faces, dtype=np.int32)
-            self._geoalg = geodesic.PyGeodesicAlgorithmExact(vertices, faces)
-        return self._geoalg
+    def _get_geodesic_algorithm(self, cortex_only: bool = True):
+        """
+        Lazily build and cache an exact geodesic solver over the loaded surface.
+
+        By default the mesh is restricted to cortex faces (?h.cortex.label), so the
+        medial wall becomes isolated vertices that geodesics cannot cross; pass
+        cortex_only=False for the whole surface. Vertex indices remain global
+        either way.
+        """
+        attr = '_geoalg_cortex' if cortex_only else '_geoalg_full'
+        solver = getattr(self, attr, None)
+        if solver is not None:
+            return solver
+        try:
+            import pygeodesic.geodesic as geodesic
+        except ImportError as exc:
+            raise ImportError(
+                "Geodesic distance requires the 'pygeodesic' package. "
+                "Install it with `pip install pygeodesic`."
+            ) from exc
+        vertices = np.asarray(self._subject.surface_RAS, dtype=np.float64)
+        faces = np.asarray(self._subject.faces, dtype=np.int32)
+        if cortex_only:
+            in_cortex = np.zeros(len(vertices), dtype=bool)
+            in_cortex[self._subject.cortex_vertices] = True
+            faces = faces[in_cortex[faces].all(axis=1)]     # keep only cortex faces
+        solver = geodesic.PyGeodesicAlgorithmExact(vertices, faces)
+        setattr(self, attr, solver)
+        return solver
 
     def _nearest_label_vertex_to_centroid(self, label_name: str) -> int:
         """Return the label's vertex index that is closest to its centroid."""
@@ -575,7 +590,8 @@ class ScalpelMeasurer:
         local_idx = np.argmin(np.linalg.norm(label.label_RAS - centroid, axis=1))
         return int(label.vertex_indexes[local_idx])
 
-    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid') -> float:
+    def calculate_geodesic_distance(self, label1: str, label2: str, method: str = 'centroid',
+                                    cortex_only: bool = True) -> float:
         """
         Exact geodesic (on-surface) distance between two labels, measured across
         the subject's loaded surface via the MMP algorithm (`pygeodesic`).
@@ -589,6 +605,9 @@ class ScalpelMeasurer:
         method: str
             'centroid' - geodesic distance between each label's centroid vertex
             'nearest'  - minimum geodesic distance between the two label vertex sets
+        cortex_only: bool
+            Restrict the geodesic to the cortex mesh (default True); set False to
+            allow paths across the medial wall.
 
         Returns:
         --------
@@ -600,7 +619,7 @@ class ScalpelMeasurer:
         if label2 not in self._subject.labels:
             raise ValueError(f"Label '{label2}' not found in subject")
 
-        geoalg = self._get_geodesic_algorithm()
+        geoalg = self._get_geodesic_algorithm(cortex_only)
 
         if method == 'centroid':
             source = self._nearest_label_vertex_to_centroid(label1)
@@ -621,6 +640,56 @@ class ScalpelMeasurer:
 
         else:
             raise ValueError("Invalid method. Choose 'centroid' or 'nearest'.")
+
+    def calculate_geodesic_path(self, label1: str, label2: str, method: str = 'centroid',
+                                cortex_only: bool = True):
+        """
+        Ordered surface-vertex indices of the exact geodesic path between two
+        labels, plus its length in mm.
+
+        Parameters:
+        -----------
+        label1, label2: str
+            Label names.
+        method: str
+            'centroid' - path between each label's centroid vertex.
+            'nearest'  - path between the closest pair of label vertices.
+        cortex_only: bool
+            Restrict the path to the cortex mesh (default True); set False to
+            allow it across the medial wall.
+
+        Returns:
+        --------
+        Tuple[np.ndarray, float]
+            Ordered path vertex indices and the geodesic length in mm.
+        """
+        from scipy.spatial import cKDTree
+
+        if label1 not in self._subject.labels:
+            raise ValueError(f"Label '{label1}' not found in subject")
+        if label2 not in self._subject.labels:
+            raise ValueError(f"Label '{label2}' not found in subject")
+
+        geoalg = self._get_geodesic_algorithm(cortex_only)
+
+        if method == 'centroid':
+            source = self._nearest_label_vertex_to_centroid(label1)
+            target = self._nearest_label_vertex_to_centroid(label2)
+        elif method == 'nearest':
+            sources = np.asarray(self._subject.labels[label1].vertex_indexes, dtype=np.int32)
+            targets = np.asarray(self._subject.labels[label2].vertex_indexes, dtype=np.int32)
+            distances, best_source = geoalg.geodesicDistances(sources, targets)
+            j = int(np.argmin(distances))
+            source, target = int(best_source[j]), int(targets[j])
+        else:
+            raise ValueError("Invalid method. Choose 'centroid' or 'nearest'.")
+
+        distance, path = geoalg.geodesicDistance(source, target)
+        # map the geodesic polyline back to ordered, de-duplicated surface vertices
+        _, nearest = cKDTree(self._subject.surface_RAS).query(np.asarray(path))
+        seen = set()
+        path_vertices = [int(v) for v in nearest if not (v in seen or seen.add(v))]
+        return np.array(path_vertices, dtype=int), float(distance)
 
     def calculate_label_overlap(self, label1: str, label2: str) -> Dict[str, float]:
         """
