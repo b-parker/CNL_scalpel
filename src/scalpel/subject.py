@@ -142,6 +142,11 @@ class ScalpelSubject:
         return gyrif_surface[0]  # vertices
 
     @cached_property
+    def fiducial_v(self):
+        """Fiducial (mid-thickness) surface: the vertex-wise midpoint of white and pial."""
+        return (self.white_v + self.pial_v) / 2.0
+
+    @cached_property
     def cortex_vertices(self):
         """Cortex-label vertex indices (``?h.cortex.label``), excluding the medial wall."""
         cortex_path = self._subject_fs_path / 'label' / f'{self._hemi}.cortex.label'
@@ -770,6 +775,60 @@ class ScalpelSubject:
             use_n_deepest=use_n_deepest
         )
     
+    def calculate_sulcal_length(self, label_name: str) -> float:
+        """
+        Sulcal length: the longest geodesic distance between any pair of vertices
+        on the label's boundary, measured on the fiducial surface, with the
+        geodesic search restricted to the label's own footprint (matching
+        Miller et al. 2020's actual implementation, not just their paper's
+        text -- see ScalpelMeasurer.calculate_sulcal_length for why this
+        matters). Requires the optional `pygeodesic` package.
+
+        Parameters:
+            label_name: str
+                Name of the label corresponding to the sulcus
+
+        Returns:
+            float: The sulcal length in mm
+        """
+        return self.measurer.calculate_sulcal_length(label_name=label_name)
+
+    def calculate_sulcal_length_path(self, label_name: str):
+        """
+        Per-component geodesic paths underlying calculate_sulcal_length, for
+        visually auditing what a sulcal length measurement actually traced.
+
+        Parameters:
+            label_name: str
+                Name of the label corresponding to the sulcus
+
+        Returns:
+            List[Tuple[np.ndarray, float]]: one (ordered path vertex indices,
+            length in mm) per connected component of the label.
+        """
+        return self.measurer.calculate_sulcal_length_path(label_name=label_name)
+
+    def calculate_sulcal_width(self, label_name: str, walk_iterations: int = 4) -> float:
+        """
+        Sulcal width following Madan (2019) calcSulc_width: the median distance,
+        on the pial surface, across the sulcal opening at points along the
+        label's boundary.
+
+        Parameters:
+            label_name: str
+                Name of the label corresponding to the sulcus
+            walk_iterations: int
+                Number of 1-ring mesh expansions used to refine each coarse
+                match (default 4, matching Madan's ``setWidthWalk`` default).
+
+        Returns:
+            float: The median sulcal width in mm
+        """
+        return self.measurer.calculate_sulcal_width(
+            label_name=label_name,
+            walk_iterations=walk_iterations
+        )
+
     def calculate_surface_area(self, label_name: Optional[str] = None) -> float:
         """
         Calculate the surface area of a label or the entire cortical surface.
@@ -980,8 +1039,10 @@ class ScalpelSubject:
             measurements: List[str]
                 List of measurements to calculate:
                 - 'area': Surface area
-                - 'thickness': Cortical thickness  
+                - 'thickness': Cortical thickness
                 - 'depth': Sulcal depth
+                - 'length': Sulcal length
+                - 'width': Sulcal width
                 - 'volume': Gray matter volume
                 - 'curvature': Mean and Gaussian curvature
                 - 'indices': Folding and intrinsic curvature indices
