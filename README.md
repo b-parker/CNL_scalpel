@@ -19,9 +19,12 @@ Scalpel is a Python library for analysis, segmentation, and plotting of FreeSurf
 
 **Measurement (morphometry)**
 - Surface area, gray matter volume, and mean/std cortical thickness per label
-- Sulcal depth from the deepest vertices of a sulcal label
+- Sulcal depth from the deepest vertices of a sulcal label (Madan 2019)
+- Sulcal width: median cross-sulcus distance along the label's boundary loop, pooled across disconnected components (Madan 2019)
+- Sulcal length: longest geodesic distance between boundary vertices on the fiducial surface, summed across disconnected components (Miller et al. 2020); `calculate_sulcal_length_path` returns the underlying per-component paths for visual auditing
 - Absolute curvature, curvature indices, and local gyrification index (lGI)
-- Batch export of FreeSurfer-style stats and arbitrary measurements to CSV
+- Batch export of FreeSurfer-style stats and arbitrary measurements to CSV for one subject
+- `scalpel.measurement.batch.run_batch_measurements`: the above measurements across a subject list and multiple sulcal labels (globally or per-label, e.g. skip the slower `length` for sulci where it isn't useful), optionally in parallel (one worker per subject/hemisphere), writing a long-format CSV plus a companion error log distinguishing unrequested measurements (blank), missing labels (`NaN`), and failed computations (flagged `ERROR` with the underlying exception logged)
 
 **Distances & paths**
 - Euclidean distance between labels (centroid, nearest, or farthest)
